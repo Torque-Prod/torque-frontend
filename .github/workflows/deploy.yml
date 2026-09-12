@@ -1,0 +1,63 @@
+﻿name: Deploy Frontend to AWS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Build & Deploy Angular Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      # 3. Install dependencies
+      - name: Install npm dependencies
+        run: npm ci
+
+      # 4. Build Angular production bundle
+      - name: Build Angular (production)
+        run: npx ng build --configuration production
+
+      # 5. Set up SSH key
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/torque.pem
+          chmod 600 ~/.ssh/torque.pem
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      # 6. Clear old files and create temp dir on server
+      - name: Prepare server web directory
+        run: |
+          ssh -i ~/.ssh/torque.pem ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
+            "sudo mkdir -p /var/www/torque && sudo rm -rf /var/www/torque/* && mkdir -p /tmp/torque-dist-new"
+
+      # 7. Upload Angular dist to server temp folder
+      - name: Upload Angular dist to server
+        run: |
+          scp -i ~/.ssh/torque.pem -r dist/angular-frontend/browser/. \
+            ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/tmp/torque-dist-new/
+
+      # 8. Move files to web root and set permissions
+      - name: Move dist to web root
+        run: |
+          ssh -i ~/.ssh/torque.pem ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
+            "sudo cp -r /tmp/torque-dist-new/. /var/www/torque/ && sudo rm -rf /tmp/torque-dist-new && sudo chown -R www-data:www-data /var/www/torque"
+
+      # 9. Reload nginx
+      - name: Reload nginx
+        run: |
+          ssh -i ~/.ssh/torque.pem ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
+            "sudo nginx -t && sudo systemctl reload nginx"
