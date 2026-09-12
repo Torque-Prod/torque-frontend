@@ -1,0 +1,280 @@
+<p-toast />
+
+<div class="rj-page">
+
+  <!-- ── Header ── -->
+  <div class="rj-header">
+    <div class="rj-header__left">
+      <h1 class="rj-header__title"><i class="pi pi-list"></i> Menu Management</h1>
+      <p class="rj-header__subtitle">Manage your restaurant's food items and categories</p>
+    </div>
+    <div class="rj-header__right">
+      <button class="btn-primary" (click)="openAddDialog()">
+        <i class="pi pi-plus"></i> Add Item
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Stats Row ── -->
+  <div class="rm-stats">
+    <div class="stat-card" (click)="filterByCategory(null); searchQuery=''; onSearch()">
+      <div class="stat-card__dot" style="background:#2563eb"></div>
+      <div class="stat-card__body">
+        <span class="stat-card__label">Total Items</span>
+        <span class="stat-card__value">{{ totalCount }}</span>
+        <span class="stat-card__sub">In menu catalog</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__dot" style="background:#22c55e"></div>
+      <div class="stat-card__body">
+        <span class="stat-card__label">Available</span>
+        <span class="stat-card__value">{{ availableCount }}</span>
+        <span class="stat-card__sub">Currently served</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__dot" style="background:#f59e0b"></div>
+      <div class="stat-card__body">
+        <span class="stat-card__label">Unavailable</span>
+        <span class="stat-card__value">{{ unavailableCount }}</span>
+        <span class="stat-card__sub">Hidden from POS</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Table Card ── -->
+  <div class="rj-table-card">
+
+    <!-- Toolbar: Search + Category Tabs -->
+    <div class="rj-toolbar">
+      <div class="rj-toolbar__left">
+        <div class="rj-toolbar__search">
+          <i class="pi pi-search"></i>
+          <input
+            type="text"
+            [(ngModel)]="searchQuery"
+            (ngModelChange)="onSearch()"
+            placeholder="Search items or categories..."
+          />
+        </div>
+        <!-- Category filter pills -->
+        <div class="rm-cat-pills">
+          <button class="cat-pill" [class.active]="selectedCategoryId === null" (click)="filterByCategory(null)">
+            All
+          </button>
+          <button
+            *ngFor="let cat of categories"
+            class="cat-pill"
+            [class.active]="selectedCategoryId === cat.id"
+            (click)="filterByCategory(cat.id)">
+            {{ cat.name }}
+          </button>
+        </div>
+      </div>
+      <span class="rj-table-footer__info">{{ filteredItems.length }} item(s)</span>
+    </div>
+
+    <!-- Table -->
+    <div class="rj-table-wrap">
+      <table class="rj-table">
+        <thead>
+          <tr>
+            <th style="width:68px">IMAGE</th>
+            <th>ITEM NAME</th>
+            <th>CATEGORY</th>
+            <th>PRICE (LKR)</th>
+            <th class="th-center">STATUS</th>
+            <th class="th-center">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <!-- Loading -->
+          <tr *ngIf="loading">
+            <td colspan="6" class="empty-row">
+              <i class="pi pi-spin pi-spinner"></i> Loading menu items...
+            </td>
+          </tr>
+
+          <!-- Empty -->
+          <tr *ngIf="!loading && filteredItems.length === 0">
+            <td colspan="6" class="empty-row">
+              <i class="pi pi-inbox"></i> No menu items found. Click "Add Item" to get started.
+            </td>
+          </tr>
+
+          <!-- Rows -->
+          <tr *ngFor="let item of filteredItems" class="rj-row">
+
+            <!-- Thumbnail -->
+            <td>
+              <div class="part-thumbnail">
+                <img *ngIf="item.imageBase64" [src]="item.imageBase64" [alt]="item.name" />
+                <i *ngIf="!item.imageBase64" class="pi pi-image part-thumbnail-placeholder"></i>
+              </div>
+            </td>
+
+            <!-- Name + Description -->
+            <td>
+              <div class="item-name">{{ item.name }}</div>
+              <div class="item-desc">{{ item.description }}</div>
+            </td>
+
+            <!-- Category -->
+            <td>
+              <span *ngIf="item.categoryName" class="category-pill">{{ item.categoryName }}</span>
+              <span *ngIf="!item.categoryName" class="text-muted">—</span>
+            </td>
+
+            <!-- Price -->
+            <td>
+              <span class="price-value">{{ item.price | number:'1.2-2' }}</span>
+            </td>
+
+            <!-- Status toggle -->
+            <td class="th-center">
+              <span
+                class="status-pill"
+                [ngClass]="item.available ? 'status-available' : 'status-unavailable'"
+                (click)="toggleAvailability(item)"
+                style="cursor:pointer"
+                title="Click to toggle">
+                <i class="pi" [ngClass]="item.available ? 'pi-check-circle' : 'pi-times-circle'"></i>
+                {{ item.available ? 'Available' : 'Unavailable' }}
+              </span>
+            </td>
+
+            <!-- Actions -->
+            <td>
+              <div class="action-buttons">
+                <button class="action-btn action-btn--view" (click)="openEditDialog(item)" title="Edit">
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button class="action-btn action-btn--delete" (click)="deleteItem(item)" title="Delete">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </div>
+            </td>
+
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer -->
+    <div class="rj-table-footer">
+      <span class="rj-table-footer__info">Showing {{ filteredItems.length }} of {{ totalRecords }} items</span>
+      <p-paginator
+        [first]="first"
+        [rows]="rows"
+        [totalRecords]="totalRecords"
+        [rowsPerPageOptions]="[10, 25, 50, 100]"
+        (onPageChange)="onPageChange($event)"
+        styleClass="rj-paginator">
+      </p-paginator>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════ -->
+<!-- ADD / EDIT DIALOG                           -->
+<!-- ════════════════════════════════════════════ -->
+<p-dialog
+  [(visible)]="dialogVisible"
+  [modal]="true"
+  [closable]="false"
+  styleClass="create-job-dialog"
+  [style]="{ width: '500px' }">
+
+  <ng-template pTemplate="content">
+
+    <!-- Dialog Header -->
+    <div class="cj-header">
+      <div class="cj-header__left">
+        <div class="cj-header__icon">
+          <i class="pi pi-list"></i>
+        </div>
+        <div>
+          <h2 class="cj-header__title">{{ editingItem ? 'Edit Menu Item' : 'New Menu Item' }}</h2>
+          <p class="cj-header__subtitle">{{ editingItem ? 'Update the details below' : 'Fill in the details to add a new item' }}</p>
+        </div>
+      </div>
+      <button class="cj-header__close" (click)="dialogVisible = false">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    <!-- Dialog Body -->
+    <div class="cj-body">
+
+      <!-- Name -->
+      <div class="cj-field">
+        <label>Item Name <span class="req">*</span></label>
+        <input type="text" [(ngModel)]="form.name" class="cj-input" placeholder="e.g. Grilled Chicken" />
+      </div>
+
+      <!-- Category -->
+      <div class="cj-field">
+        <label>Category</label>
+        <select [(ngModel)]="form.categoryId" class="cj-input">
+          <option [ngValue]="null">— No Category —</option>
+          <option *ngFor="let cat of categories" [ngValue]="cat.id">{{ cat.name }}</option>
+        </select>
+      </div>
+
+      <!-- Price -->
+      <div class="cj-field">
+        <label>Price (LKR) <span class="req">*</span></label>
+        <input type="number" [(ngModel)]="form.price" class="cj-input" placeholder="0.00" min="0" step="0.01" />
+      </div>
+
+      <!-- Description -->
+      <div class="cj-field">
+        <label>Description</label>
+        <textarea [(ngModel)]="form.description" class="cj-input" rows="3" placeholder="Short description of the item..."></textarea>
+      </div>
+
+      <!-- Image Upload -->
+      <div class="cj-field">
+        <label>Photo</label>
+        <div class="image-upload-zone" (click)="fileInput.click()">
+          <div *ngIf="!imagePreview" class="upload-placeholder">
+            <i class="pi pi-camera"></i>
+            <p>Click to upload a photo</p>
+            <p style="font-size:.7rem; color:#cbd5e1">JPG, PNG or WEBP</p>
+          </div>
+          <div *ngIf="imagePreview" class="image-preview-container">
+            <img [src]="imagePreview" class="image-preview" />
+            <button class="remove-image-btn" (click)="$event.stopPropagation(); removeImage()" title="Remove">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        </div>
+        <input #fileInput type="file" accept="image/*" style="display:none" (change)="onImageSelected($event)" />
+      </div>
+
+      <!-- Available Toggle -->
+      <div class="cj-field toggle-field">
+        <label>Available on POS</label>
+        <label class="toggle-switch">
+          <input type="checkbox" [(ngModel)]="form.available" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+    </div>
+
+    <!-- Dialog Footer -->
+    <div class="cj-footer">
+      <button class="cj-btn-cancel" (click)="dialogVisible = false">Cancel</button>
+      <button class="cj-btn-create" (click)="saveItem()" [disabled]="saving">
+        <i class="pi" [ngClass]="saving ? 'pi-spin pi-spinner' : 'pi-check'"></i>
+        {{ saving ? 'Saving...' : (editingItem ? 'Update Item' : 'Create Item') }}
+      </button>
+    </div>
+
+  </ng-template>
+</p-dialog>

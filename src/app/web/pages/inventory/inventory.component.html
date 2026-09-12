@@ -1,0 +1,397 @@
+<p-toast />
+
+<div class="rj-page">
+  <!-- Header -->
+  <div class="rj-header">
+    <div class="rj-header__left">
+      <h1 class="rj-header__title"><i class="pi pi-box"></i> Spare Parts Inventory</h1>
+      <p class="rj-header__subtitle">Manage stock levels and pricing for repair parts</p>
+    </div>
+    <div class="rj-header__right">
+      <button class="btn-csv" (click)="exportToExcel()" [disabled]="exporting">
+        <i class="pi" [ngClass]="exporting ? 'pi-spin pi-spinner' : 'pi-file-excel'"></i> 
+        {{ exporting ? 'Exporting...' : 'Export Excel' }}
+      </button>
+      <button class="btn-csv" (click)="openCsvDialog()">
+        <i class="pi pi-upload"></i> Import CSV
+      </button>
+      <button class="btn-primary" (click)="openCreateDialog()">
+        <i class="pi pi-plus"></i> Add New Part
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="inv-stats">
+    <div class="stat-card" (click)="filters.stockStatus = null; onFilterChange()">
+      <div class="stat-card__dot" style="background:#2563eb"></div>
+      <div class="stat-card__body">
+        <span class="stat-card__label">Total Parts</span>
+        <span class="stat-card__value">{{ totalPartsCount }}</span>
+        <span class="stat-card__sub">In catalog</span>
+      </div>
+    </div>
+    <div class="stat-card" (click)="filters.stockStatus = 'available'; onFilterChange()">
+      <div class="stat-card__dot" style="background:#22c55e"></div>
+      <div class="stat-card__body">
+        <span class="stat-card__label">In Stock</span>
+        <span class="stat-card__value">{{ inStockCount }}</span>
+        <span class="stat-card__sub">Available parts</span>
+      </div>
+    </div>
+    <div class="stat-card" (click)="filters.stockStatus = 'low'; onFilterChange()">
+      <div class="stat-card__dot" style="background:#ef4444"></div>
+      <div class="stat-card__body">
+        <span class="stat-card__label">Low Stock</span>
+        <span class="stat-card__value">{{ lowStockCount }}</span>
+        <span class="stat-card__sub">Quantity ≤ 5</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Card -->
+  <div class="rj-table-card">
+    <!-- Toolbar -->
+    <div class="rj-toolbar">
+
+    </div>
+
+    <!-- Table -->
+    <div class="rj-table-wrap">
+      <table class="rj-table">
+        <thead>
+          <tr>
+            <th style="width: 60px">IMAGE</th>
+            <th>
+              <div class="filter-cell">
+                <label class="filter-label">PART NAME</label>
+                <input type="text" [(ngModel)]="filters.name"
+                       (ngModelChange)="onFilterChange()"
+                       placeholder="Part name"
+                       class="filter-input" />
+              </div>
+            </th>
+            <th>UNIT PRICE (RS.)</th>
+            <th class="th-center">IN STOCK</th>
+            <th>
+              <div class="filter-cell">
+                <label class="filter-label">CATEGORY</label>
+                <input type="text" [(ngModel)]="filters.category"
+                       (ngModelChange)="onFilterChange()"
+                       placeholder="Category"
+                       class="filter-input" />
+              </div>
+            </th>
+            <th>
+              <div class="filter-cell">
+                <label class="filter-label">LOCATION</label>
+                <input type="text" [(ngModel)]="filters.containerLocation"
+                       (ngModelChange)="onFilterChange()"
+                       placeholder="Container location"
+                       class="filter-input" />
+              </div>
+            </th>
+            <th class="th-center">
+              <div class="filter-cell" style="align-items:center">
+                <label class="filter-label">STATUS</label>
+                <div class="stock-filter-dropdown" >
+                  <button class="stock-filter-trigger" type="button" (click)="toggleStockStatusDropdown($event)">
+                    <span>{{ selectedStockStatusLabel }}</span>
+                    <i class="pi pi-chevron-down" [class.is-open]="stockStatusDropdownOpen"></i>
+                  </button>
+                  <div class="stock-filter-menu" *ngIf="stockStatusDropdownOpen" (click)="$event.stopPropagation()">
+                    <button class="stock-filter-option"
+                            type="button"
+                            [class.is-selected]="filters.stockStatus === null"
+                            (click)="selectStockStatus(null)">
+                      <span class="stock-filter-dot stock-filter-dot--all"></span>
+                      All
+                    </button>
+                    <button class="stock-filter-option"
+                            type="button"
+                            *ngFor="let option of stockStatusOptions"
+                            [class.is-selected]="filters.stockStatus === option.value"
+                            (click)="selectStockStatus(option.value)">
+                      <span class="stock-filter-dot"
+                            [class.stock-filter-dot--available]="option.value === 'available'"
+                            [class.stock-filter-dot--low]="option.value === 'low'"></span>
+                      {{ option.label }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </th>
+            <th class="th-center" style="width:120px">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="loading">
+            <td colspan="8" class="empty-row"><i class="pi pi-spin pi-spinner"></i> Loading...</td>
+          </tr>
+          <tr *ngIf="!loading && parts.length === 0">
+            <td colspan="8" class="empty-row"><i class="pi pi-inbox"></i> No parts found</td>
+          </tr>
+          <tr *ngFor="let part of parts" class="rj-row">
+            <td>
+              <div class="part-thumbnail">
+                <img *ngIf="part.hasImage" [src]="getPartImageUrl(part.id!)" alt="Part Image" />
+                <div *ngIf="!part.hasImage" class="part-thumbnail-placeholder">
+                  <i class="pi pi-image"></i>
+                </div>
+              </div>
+            </td>
+            <td><strong class="customer-name">{{ part.name }}</strong></td>
+            <td>Rs. {{ part.price | number:'1.2-2' }}</td>
+            <td class="th-center">
+              <span class="stock-value" [class.stock-critical]="part.stockQuantity <= 5">{{ part.stockQuantity }}</span>
+            </td>
+            <td>
+              <span class="category-pill" *ngIf="part.category">{{ part.category }}</span>
+              <span class="text-muted" *ngIf="!part.category">—</span>
+            </td>
+            <td>
+              <span *ngIf="part.containerLocation">{{ part.containerLocation }}</span>
+              <span class="text-muted" *ngIf="!part.containerLocation">—</span>
+            </td>
+            <td class="th-center">
+              <span class="status-pill"
+                [style.background]="part.stockQuantity > 5 ? '#f0fdf4' : '#fef2f2'"
+                [style.color]="part.stockQuantity > 5 ? '#16a34a' : '#dc2626'"
+                [style.border-color]="part.stockQuantity > 5 ? '#bbf7d0' : '#fecaca'">
+                <i [class]="part.stockQuantity > 5 ? 'pi pi-check-circle' : 'pi pi-exclamation-circle'"></i>
+                {{ part.stockQuantity > 5 ? 'Available' : 'Low Stock' }}
+              </span>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button class="action-btn action-btn--edit" style="background:#eff6ff;color:#2563eb;border-color:#bfdbfe" pTooltip="Sell Part (POS)" (click)="router.navigate(['/web/sales'])">
+                  <i class="pi pi-shopping-cart"></i>
+                </button>
+                <button class="action-btn action-btn--view" pTooltip="Edit" (click)="openEditDialog(part)">
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button class="action-btn action-btn--delete" pTooltip="Delete" (click)="deletePart(part)">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer + Paginator -->
+    <div class="rj-table-footer">
+      <span class="rj-table-footer__info">Showing {{ parts.length }} of {{ totalRecords }} parts</span>
+      <p-paginator
+        [first]="first"
+        [rows]="rows"
+        [totalRecords]="totalRecords"
+        [rowsPerPageOptions]="[10, 25, 50, 100]"
+        (onPageChange)="onPageChange($event)"
+        styleClass="rj-paginator">
+      </p-paginator>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Part Dialog -->
+<p-dialog [(visible)]="dialogVisible" [showHeader]="false"
+  [modal]="true" [style]="{ width: '440px', borderRadius: '14px', overflow: 'hidden' }" [draggable]="false"
+  styleClass="create-job-dialog">
+
+  <div class="cj-header">
+    <div class="cj-header__left">
+      <div class="cj-header__icon" style="background:#d97706">
+        <i class="pi pi-box"></i>
+      </div>
+      <div>
+        <h2 class="cj-header__title">{{ isEdit ? 'Edit Part' : 'Add New Part' }}</h2>
+        <p class="cj-header__subtitle">{{ isEdit ? 'Update part details' : 'Add a spare part to inventory' }}</p>
+      </div>
+    </div>
+    <button class="cj-header__close" (click)="dialogVisible = false">
+      <i class="pi pi-times"></i>
+    </button>
+  </div>
+
+  <div class="cj-body">
+    <div class="cj-field">
+      <label>Part Name <span class="req">*</span></label>
+      <input type="text" class="cj-input" [(ngModel)]="form.name" placeholder="e.g. Sewing Machine Belt" />
+    </div>
+    <div class="cj-field">
+      <label>Price (Rs.) <span class="req">*</span></label>
+      <input type="number" class="cj-input" [(ngModel)]="form.price" placeholder="0.00" />
+    </div>
+    <div class="cj-field">
+      <label>Stock Quantity <span class="req">*</span></label>
+      <input type="number" class="cj-input" [(ngModel)]="form.stockQuantity" placeholder="0" />
+    </div>
+    <div class="cj-field">
+      <label>Category</label>
+      <input type="text" class="cj-input" [(ngModel)]="form.category" placeholder="e.g. Belts, Needles, Motors" />
+    </div>
+    <div class="cj-field">
+      <label>Container Location</label>
+      <input type="text" class="cj-input" [(ngModel)]="form.containerLocation" placeholder="e.g. Shelf A-3, Drawer 2B" />
+    </div>
+
+    <!-- Image Upload Area -->
+    <div class="cj-field">
+      <label>Part Image</label>
+      <div class="image-upload-zone"
+           [class.drag-over]="imageDragOver"
+           (dragover)="onImageDragOver($event)"
+           (dragleave)="onImageDragLeave()"
+           (drop)="onImageDrop($event)"
+           (click)="fileInput.click()">
+        
+        <input type="file" #fileInput accept="image/*" style="display: none" (change)="onImageSelected($event)" />
+
+        <div *ngIf="!imagePreviewUrl" class="upload-placeholder">
+          <i class="pi pi-image"></i>
+          <p>Click or drag image here to upload</p>
+        </div>
+
+        <div *ngIf="imagePreviewUrl" class="image-preview-container">
+          <img [src]="imagePreviewUrl" alt="Preview" class="image-preview" />
+          <button type="button" class="remove-image-btn" (click)="removeSelectedImage($event)">
+            <i class="pi pi-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <p *ngIf="formError" class="form-error"><i class="pi pi-exclamation-triangle"></i> {{ formError }}</p>
+  </div>
+
+  <div class="cj-footer">
+    <button class="cj-btn-cancel" (click)="dialogVisible = false">Cancel</button>
+    <button class="cj-btn-create" (click)="savePart()" [disabled]="saving">
+      <i class="pi pi-save"></i> {{ isEdit ? 'Update' : 'Save' }}
+    </button>
+  </div>
+</p-dialog>
+
+<!-- ─── CSV Import Dialog ─── -->
+<p-dialog [(visible)]="csvDialogVisible" [showHeader]="false"
+  [modal]="true" [style]="{ width: '560px', borderRadius: '14px', overflow: 'hidden' }" [draggable]="false"
+  styleClass="create-job-dialog">
+
+  <!-- Header -->
+  <div class="cj-header">
+    <div class="cj-header__left">
+      <div class="cj-header__icon" style="background:#7c3aed">
+        <i class="pi pi-upload"></i>
+      </div>
+      <div>
+        <h2 class="cj-header__title">Import Parts from CSV</h2>
+        <p class="cj-header__subtitle">Upload a CSV file to add multiple parts at once</p>
+      </div>
+    </div>
+    <button class="cj-header__close" (click)="csvDialogVisible = false">
+      <i class="pi pi-times"></i>
+    </button>
+  </div>
+
+  <!-- Body -->
+  <div class="cj-body">
+
+    <!-- Template Download -->
+    <div class="csv-template-banner">
+      <i class="pi pi-file-excel"></i>
+      <span>Need a template? </span>
+      <button class="csv-template-link" type="button" (click)="downloadCsvTemplate()">
+        Download sample CSV
+      </button>
+      <span class="csv-template-hint">— columns: name, price, stockQuantity, category (optional), containerLocation (optional)</span>
+    </div>
+
+    <!-- Drop Zone -->
+    <div class="csv-dropzone"
+         [class.csv-dropzone--active]="csvDragOver"
+         [class.csv-dropzone--has-file]="!!csvFile && !csvResult"
+         (dragover)="onCsvDragOver($event)"
+         (dragleave)="onCsvDragLeave()"
+         (drop)="onCsvDrop($event)"
+         (click)="csvFileInput.click()">
+
+      <input #csvFileInput type="file" accept=".csv" hidden (change)="onCsvFileSelected($event)" />
+
+      <ng-container *ngIf="!csvFile">
+        <div class="csv-dropzone__icon"><i class="pi pi-cloud-upload"></i></div>
+        <p class="csv-dropzone__title">Drag & drop your CSV file here</p>
+        <p class="csv-dropzone__sub">or <strong>click to browse</strong></p>
+        <p class="csv-dropzone__hint">.csv files only · max 5 MB</p>
+      </ng-container>
+
+      <ng-container *ngIf="csvFile && !csvResult">
+        <div class="csv-file-info">
+          <i class="pi pi-file csv-file-info__icon"></i>
+          <div>
+            <p class="csv-file-info__name">{{ csvFile.name }}</p>
+            <p class="csv-file-info__size">{{ (csvFile.size / 1024).toFixed(1) }} KB · Click to change</p>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+
+    <p *ngIf="csvFileError" class="form-error"><i class="pi pi-exclamation-triangle"></i> {{ csvFileError }}</p>
+
+    <!-- Import Result -->
+    <div *ngIf="csvResult" class="csv-result">
+      <div class="csv-result__stats">
+        <div class="csv-stat csv-stat--total">
+          <span class="csv-stat__value">{{ csvResult.totalRows }}</span>
+          <span class="csv-stat__label">Total Rows</span>
+        </div>
+        <div class="csv-stat csv-stat--ok">
+          <i class="pi pi-check-circle"></i>
+          <span class="csv-stat__value">{{ csvResult.importedCount }}</span>
+          <span class="csv-stat__label">Imported</span>
+        </div>
+        <div class="csv-stat csv-stat--skip">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span class="csv-stat__value">{{ csvResult.skippedCount }}</span>
+          <span class="csv-stat__label">Skipped</span>
+        </div>
+      </div>
+
+      <!-- Error table -->
+      <div *ngIf="csvResult.errors.length > 0" class="csv-errors">
+        <p class="csv-errors__title"><i class="pi pi-info-circle"></i> Rows with errors (skipped)</p>
+        <div class="csv-errors__table-wrap">
+          <table class="csv-errors__table">
+            <thead>
+              <tr>
+                <th>Row</th>
+                <th>Data</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let err of csvResult.errors">
+                <td><span class="csv-row-badge">{{ err.rowNumber }}</span></td>
+                <td class="csv-err-data">{{ err.rowData }}</td>
+                <td class="csv-err-reason">{{ err.reason }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="cj-footer">
+    <button class="cj-btn-cancel" (click)="csvDialogVisible = false">Close</button>
+    <button *ngIf="!csvResult" class="cj-btn-create" (click)="importCsv()" [disabled]="!csvFile || csvImporting">
+      <i class="pi" [ngClass]="csvImporting ? 'pi-spin pi-spinner' : 'pi-upload'"></i>
+      {{ csvImporting ? 'Importing...' : 'Import Now' }}
+    </button>
+    <button *ngIf="csvResult" class="cj-btn-create" (click)="openCsvDialog()">
+      <i class="pi pi-refresh"></i> Import Another File
+    </button>
+  </div>
+</p-dialog>

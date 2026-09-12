@@ -1,0 +1,97 @@
+<div class="rj-page">
+  <div class="rj-header">
+    <div class="rj-header__left">
+      <h1 class="rj-header__title"><i class="pi pi-users"></i> Role Management</h1>
+      <p class="rj-header__subtitle">Manage user roles and privileges</p>
+    </div>
+    <div class="rj-header__right">
+      <button class="btn-primary" (click)="openNew()">
+        <i class="pi pi-plus"></i> Create Role
+      </button>
+    </div>
+  </div>
+
+  <div class="rj-table-card">
+    <div class="rj-table-wrap">
+    <table class="rj-table">
+      <thead>
+        <tr>
+          <th>ROLE NAME</th>
+          <th>DESCRIPTION</th>
+          <th>ASSIGNED PRIVILEGES</th>
+          <th class="th-center" style="width: 120px">ACTIONS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="loading">
+          <td colspan="4" class="empty-row"><i class="pi pi-spin pi-spinner"></i> Loading...</td>
+        </tr>
+        <tr *ngIf="!loading && roles.length === 0">
+          <td colspan="4" class="empty-row"><i class="pi pi-inbox"></i> No roles found</td>
+        </tr>
+        <tr *ngFor="let role of roles" class="rj-row">
+          <td><strong>{{ role.name }}</strong></td>
+          <td>{{ role.description }}</td>
+          <td>
+            <span *ngFor="let p of role.privileges" class="privilege-badge">
+              {{ p.name }}
+            </span>
+            <span *ngIf="!role.privileges || role.privileges.length === 0" class="text-muted">None</span>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn action-btn--view" title="Edit" (click)="editRole(role)">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="action-btn action-btn--status" title="Delete" (click)="deleteRole(role)" [disabled]="role.name === 'ADMIN'">
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- Role Edit Dialog -->
+  <p-dialog [(visible)]="displayDialog" [header]="selectedRole.id ? 'Edit Role' : 'New Role'"
+            [modal]="true" [style]="{width: '600px'}" styleClass="rj-modal">
+    <div class="modal-form">
+      <div class="form-group">
+        <label>Role Name (cannot be changed after creation)</label>
+        <input type="text" pInputText [(ngModel)]="selectedRole.name" [disabled]="!!selectedRole.id" placeholder="e.g. SUPERVISOR" />
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" pInputText [(ngModel)]="selectedRole.description" placeholder="Short description" />
+      </div>
+
+      <div class="form-group">
+        <label style="margin-bottom: 10px; display: block;">Assign Privileges</label>
+        <div class="privileges-grid">
+          <div *ngFor="let p of privileges" class="field-checkbox">
+            <p-checkbox 
+               [value]="p.id" 
+               [ngModel]="hasSelectedPrivilege(p.id)" 
+               (onChange)="togglePrivilege(p.id)" 
+               [binary]="true">
+            </p-checkbox>
+            <label>{{ p.name }}</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <div class="dialog-footer-btns">
+        <button class="cj-btn-cancel" (click)="displayDialog = false">Cancel</button>
+        <button class="cj-btn-create" (click)="saveRole()" [disabled]="saving">
+          <i class="pi" [ngClass]="saving ? 'pi-spin pi-spinner' : 'pi-check'"></i>
+          {{ saving ? 'Saving...' : 'Save Role' }}
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
+</div>

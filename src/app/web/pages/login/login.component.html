@@ -1,0 +1,83 @@
+<div class="login-container">
+  <!-- Decorative Glow Blobs -->
+  <div class="glow-blob glow-blob--top"></div>
+  <div class="glow-blob glow-blob--bottom"></div>
+
+  <!-- Main Login Card -->
+  <div class="login-card">
+    <!-- Brand Header -->
+    <div class="brand-header">
+      <div class="brand-icon-box">
+        <i class="pi pi-bolt"></i>
+      </div>
+      <h1 class="brand-title">Torque</h1>
+      <p class="brand-subtitle">Repair Shop Management System</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Login Form -->
+    <form class="login-form" (ngSubmit)="onLogin()">
+      <!-- Username Field -->
+      <div class="form-group">
+        <div class="input-wrapper">
+          <i class="pi pi-user input-icon"></i>
+          <input 
+            type="text" 
+            class="login-input" 
+            [(ngModel)]="username" 
+            name="username"
+            placeholder="Username" 
+            autocomplete="username"
+            required />
+        </div>
+      </div>
+
+      <!-- Password Field -->
+      <div class="form-group">
+        <div class="input-wrapper">
+          <i class="pi pi-lock input-icon"></i>
+          <input 
+            [type]="showPassword ? 'text' : 'password'" 
+            class="login-input" 
+            [(ngModel)]="password" 
+            name="password"
+            placeholder="Password" 
+            autocomplete="current-password"
+            required />
+          <button type="button" class="password-toggle" (click)="togglePassword()">
+            <i [class]="showPassword ? 'pi pi-eye-slash' : 'pi pi-eye'"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Forgot Password -->
+      <a href="javascript:void(0)" class="forgot-link">Forgot password?</a>
+
+      <!-- Error Message -->
+      <div class="error-message" *ngIf="errorMessage">
+        <i class="pi pi-exclamation-circle"></i>
+        <span>{{ errorMessage }}</span>
+      </div>
+
+      <!-- Sign In Button -->
+      <button type="submit" class="btn-signin" [disabled]="loading">
+        <span *ngIf="!loading">Sign In</span>
+        <i *ngIf="!loading" class="pi pi-arrow-right"></i>
+        <i *ngIf="loading" class="pi pi-spin pi-spinner"></i>
+      </button>
+    </form>
+
+    <!-- Sign Up Prompt -->
+    <div class="signup-prompt">
+      <span>Don't have an account?</span>
+      <a routerLink="/register" class="signup-link">Sign up</a>
+    </div>
+
+    <!-- Secure Connection Footer -->
+    <div class="secure-footer">
+      <i class="pi pi-shield"></i>
+      <span>Secured & encrypted connection</span>
+    </div>
+  </div>
+</div>

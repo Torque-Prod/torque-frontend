@@ -1,0 +1,562 @@
+<p-toast />
+
+<div class="sales-page">
+  <!-- Page Header & Tabs -->
+  <div class="sales-header">
+    <div class="sales-header__left">
+      <h1 class="sales-header__title">
+        <i class="pi pi-shopping-cart"></i> POS & Sales Register
+      </h1>
+      <p class="sales-header__subtitle">Sell spare parts, manage invoices & track direct sales</p>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="sales-tabs">
+      <button class="sales-tab" [class.is-active]="activeTab === 'pos'" (click)="switchTab('pos')">
+        <i class="pi pi-desktop"></i> POS Register
+      </button>
+      <button class="sales-tab" [class.is-active]="activeTab === 'history'" (click)="switchTab('history')">
+        <i class="pi pi-history"></i> Sales History
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 1: POS REGISTER VIEW                   -->
+  <!-- ========================================== -->
+  <div class="pos-layout" *ngIf="activeTab === 'pos'">
+    
+    <!-- LEFT: Catalog / Parts Grid -->
+    <div class="pos-catalog-panel">
+      <!-- Search & Filters -->
+      <div class="pos-search-bar">
+        <div class="search-input-wrap">
+          <i class="pi pi-search"></i>
+
+          <!-- Repair Center search -->
+          <input
+            *ngIf="businessType === 'REPAIR_CENTER'"
+            type="text"
+            [(ngModel)]="catalogSearch"
+            (ngModelChange)="onCatalogSearch()"
+            placeholder="Search spare parts by name, SKU or bin..."
+          />
+          <button *ngIf="businessType === 'REPAIR_CENTER' && catalogSearch" class="clear-btn" (click)="catalogSearch=''; onCatalogSearch()">
+            <i class="pi pi-times"></i>
+          </button>
+
+          <!-- Restaurant search -->
+          <input
+            *ngIf="businessType === 'RESTAURANT'"
+            type="text"
+            [(ngModel)]="restaurantSearch"
+            (ngModelChange)="onRestaurantSearch()"
+            placeholder="Search food items or category..."
+          />
+          <button *ngIf="businessType === 'RESTAURANT' && restaurantSearch" class="clear-btn" (click)="restaurantSearch=''; onRestaurantSearch()">
+            <i class="pi pi-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── RESTAURANT: Food Menu Grid ── -->
+      <div class="parts-grid-scroll" *ngIf="businessType === 'RESTAURANT'">
+        <div *ngIf="loadingCatalog" class="catalog-empty">
+          <i class="pi pi-spin pi-spinner"></i> Loading menu...
+        </div>
+        <div *ngIf="!loadingCatalog && filteredRestaurantItems.length === 0" class="catalog-empty">
+          <i class="pi pi-inbox"></i> No menu items found.
+        </div>
+        <div class="parts-grid" *ngIf="!loadingCatalog && filteredRestaurantItems.length > 0">
+          <div
+            *ngFor="let item of filteredRestaurantItems"
+            class="part-card"
+            (click)="addRestaurantItemToCart(item)">
+
+            <!-- Image — same structure as parts -->
+            <div class="part-card__img">
+              <img *ngIf="item.imageBase64" [src]="item.imageBase64" alt="{{ item.name }}" />
+              <div *ngIf="!item.imageBase64" class="part-card__img-fallback">
+                <i class="pi pi-bowl-hot"></i>
+              </div>
+              <!-- Category badge where stock badge sits -->
+              <span class="part-stock-badge" *ngIf="item.categoryName">
+                {{ item.categoryName }}
+              </span>
+            </div>
+
+            <!-- Info — same structure as parts -->
+            <div class="part-card__info">
+              <h4 class="part-card__name" [title]="item.name">{{ item.name }}</h4>
+              <div class="part-card__bottom">
+                <span class="part-card__price">LKR {{ item.price | number:'1.2-2' }}</span>
+                <button class="add-cart-btn" (click)="$event.stopPropagation(); addRestaurantItemToCart(item)">
+                  <i class="pi pi-plus"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── REPAIR CENTER: Parts Grid ── -->
+      <div class="parts-grid-scroll" *ngIf="businessType === 'REPAIR_CENTER'">
+        <div *ngIf="loadingCatalog" class="catalog-empty">
+          <i class="pi pi-spin pi-spinner"></i> Loading inventory parts...
+        </div>
+        <div *ngIf="!loadingCatalog && catalogParts.length === 0" class="catalog-empty">
+          <i class="pi pi-inbox"></i> No spare parts found.
+        </div>
+
+        <div class="parts-grid" *ngIf="!loadingCatalog && catalogParts.length > 0">
+          <div 
+            *ngFor="let part of catalogParts" 
+            class="part-card" 
+            [class.out-of-stock]="part.stockQuantity <= 0"
+            (click)="addToCart(part)">
+            
+            <div class="part-card__img">
+              <img *ngIf="part.hasImage" [src]="getPartImageUrl(part.id!)" alt="{{ part.name }}" />
+              <div *ngIf="!part.hasImage" class="part-card__img-fallback">
+                <i class="pi pi-box"></i>
+              </div>
+              <span class="part-stock-badge" [class.badge-low]="part.stockQuantity <= 5" [class.badge-out]="part.stockQuantity <= 0">
+                {{ part.stockQuantity > 0 ? (part.stockQuantity + ' in stock') : 'Out of Stock' }}
+              </span>
+            </div>
+
+            <div class="part-card__info">
+              <span class="part-category-tag" *ngIf="part.category">{{ part.category }}</span>
+              <h4 class="part-card__name" [title]="part.name">{{ part.name }}</h4>
+              <div class="part-card__bottom">
+                <span class="part-card__price">Rs. {{ part.price | number:'1.2-2' }}</span>
+                <button class="add-cart-btn" [disabled]="part.stockQuantity <= 0" (click)="$event.stopPropagation(); addToCart(part)">
+                  <i class="pi pi-plus"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Catalog Paginator Footer -->
+      <div class="catalog-paginator-wrap" *ngIf="catalogTotalRecords > 0">
+        <span class="catalog-info">Showing {{ catalogParts.length }} of {{ catalogTotalRecords }} parts</span>
+        <p-paginator
+          [first]="catalogFirst"
+          [rows]="catalogRows"
+          [totalRecords]="catalogTotalRecords"
+          [rowsPerPageOptions]="[12, 24, 48]"
+          (onPageChange)="onCatalogPageChange($event)"
+          styleClass="catalog-paginator">
+        </p-paginator>
+      </div>
+    </div>
+
+    <!-- RIGHT: Interactive Cart & Checkout Panel -->
+    <div class="pos-cart-panel">
+      <div class="cart-header">
+        <div class="cart-title">
+          <i class="pi pi-shopping-bag"></i>
+          <h3>Current Sale</h3>
+          <span class="cart-count">{{ cart.length }} items</span>
+        </div>
+        <button class="clear-cart-btn" *ngIf="cart.length > 0" (click)="clearCart()">
+          <i class="pi pi-trash"></i> Clear
+        </button>
+      </div>
+
+      <!-- Customer Selector Section -->
+      <div class="cart-customer-section">
+        <div class="customer-toggle">
+          <label class="toggle-option" [class.is-selected]="isWalkIn">
+            <input type="radio" [(ngModel)]="isWalkIn" [value]="true" (change)="onCustomerTypeChange()" />
+            <i class="pi pi-user"></i> Walk-in / Cash
+          </label>
+          <label class="toggle-option" [class.is-selected]="!isWalkIn">
+            <input type="radio" [(ngModel)]="isWalkIn" [value]="false" (change)="onCustomerTypeChange()" />
+            <i class="pi pi-users"></i> Registered Customer
+          </label>
+        </div>
+
+        <div *ngIf="!isWalkIn" class="customer-picker">
+          <p-dropdown 
+            [options]="customers" 
+            optionLabel="name" 
+            [(ngModel)]="selectedCustomerId" 
+            (onChange)="onCustomerSelect($event.value)"
+            placeholder="Select a registered customer"
+            [filter]="true" 
+            filterBy="name,phone"
+            styleClass="w-full">
+            <ng-template let-c pTemplate="item">
+              <div class="cust-dropdown-row">
+                <strong>{{ c.name }}</strong>
+                <span class="cust-dropdown-phone">{{ c.phone }}</span>
+              </div>
+            </ng-template>
+          </p-dropdown>
+        </div>
+      </div>
+
+      <!-- Cart Items List -->
+      <div class="cart-items-scroll">
+        <div *ngIf="cart.length === 0" class="cart-empty-state">
+          <div class="empty-icon"><i class="pi pi-shopping-cart"></i></div>
+          <p>Cart is empty</p>
+          <span>Select spare parts from the catalog on the left to start billing</span>
+        </div>
+
+        <div *ngFor="let item of cart" class="cart-item-row">
+          <div class="cart-item-details">
+            <h5 class="cart-item-name">{{ item.part.name }}</h5>
+            <span class="cart-item-unit-price">Rs. {{ item.unitPrice | number:'1.2-2' }} each</span>
+          </div>
+
+          <div class="cart-item-controls">
+            <button class="qty-btn" (click)="decrementQuantity(item)"><i class="pi pi-minus"></i></button>
+            <input type="number" class="qty-input" [ngModel]="item.quantity" (ngModelChange)="updateItemQuantity(item, $event)" min="1" [max]="item.part.stockQuantity" />
+            <button class="qty-btn" (click)="incrementQuantity(item)" [disabled]="item.quantity >= item.part.stockQuantity"><i class="pi pi-plus"></i></button>
+          </div>
+
+          <div class="cart-item-total">
+            <span>Rs. {{ item.totalPrice | number:'1.2-2' }}</span>
+            <button class="remove-item-btn" (click)="removeFromCart(item)"><i class="pi pi-times"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bill Breakdown & Summary -->
+      <div class="cart-summary">
+        <div class="summary-line">
+          <span>Subtotal</span>
+          <span>Rs. {{ subtotal | number:'1.2-2' }}</span>
+        </div>
+
+        <div class="summary-line-input">
+          <label>Discount (Rs.)</label>
+          <input type="number" [(ngModel)]="discount" (ngModelChange)="calculateTotals()" min="0" placeholder="0.00" />
+        </div>
+
+        <div class="summary-line net-total-line">
+          <span>Net Total</span>
+          <span class="net-total-val">Rs. {{ netTotal | number:'1.2-2' }}</span>
+        </div>
+
+        <!-- Payment Method Selection -->
+        <div class="payment-method-grid">
+          <button 
+            *ngFor="let pm of paymentMethods" 
+            type="button"
+            class="pm-btn" 
+            [class.is-active]="paymentMethod === pm.value"
+            (click)="paymentMethod = pm.value">
+            <i class="pi" [ngClass]="pm.icon"></i>
+            <span>{{ pm.label }}</span>
+          </button>
+        </div>
+
+        <!-- Cash Tendered & Change Calculation -->
+        <div *ngIf="paymentMethod === 'CASH'" class="cash-calc-row">
+          <div class="cash-field">
+            <label>Amount Tendered (Rs.)</label>
+            <input type="number" [(ngModel)]="paidAmount" (ngModelChange)="calculateTotals()" min="0" />
+          </div>
+          <div class="cash-change">
+            <label>Change Due</label>
+            <span class="change-val">Rs. {{ changeAmount | number:'1.2-2' }}</span>
+          </div>
+        </div>
+
+        <!-- Checkout Action Button -->
+        <button 
+          class="checkout-submit-btn" 
+          [disabled]="cart.length === 0 || checkingOut"
+          (click)="completeSale()">
+          <i class="pi" [ngClass]="checkingOut ? 'pi-spin pi-spinner' : 'pi-check-circle'"></i>
+          <span>{{ checkingOut ? 'Processing Sale...' : 'Complete Sale & Print Bill' }}</span>
+          <span class="btn-price" *ngIf="!checkingOut">Rs. {{ netTotal | number:'1.2-2' }}</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 2: SALES HISTORY & INVOICES VIEW       -->
+  <!-- ========================================== -->
+  <div class="sales-history-view" *ngIf="activeTab === 'history'">
+    
+    <!-- Stats Row -->
+    <div class="history-stats-row">
+      <div class="h-stat-card">
+        <div class="h-stat-icon" style="background:#2563eb"><i class="pi pi-receipt"></i></div>
+        <div>
+          <span class="h-stat-label">Total Invoices</span>
+          <h3 class="h-stat-val">{{ historyTotalRecords }}</h3>
+        </div>
+      </div>
+      <div class="h-stat-card">
+        <div class="h-stat-icon" style="background:#16a34a"><i class="pi pi-dollar"></i></div>
+        <div>
+          <span class="h-stat-label">Total Direct Sales Revenue</span>
+          <h3 class="h-stat-val">Rs. {{ historyTotalRevenue | number:'1.2-2' }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Table Card -->
+    <div class="rj-table-card">
+      <div class="history-toolbar">
+        <div class="search-input-wrap">
+          <i class="pi pi-search"></i>
+          <input 
+            type="text" 
+            [(ngModel)]="historySearch" 
+            (ngModelChange)="loadSalesHistory()" 
+            placeholder="Search invoice number, customer name, phone..." 
+          />
+        </div>
+
+        <button class="btn-primary" (click)="loadSalesHistory()">
+          <i class="pi pi-refresh"></i> Refresh
+        </button>
+      </div>
+
+      <div class="rj-table-wrap">
+        <table class="rj-table">
+          <thead>
+            <tr>
+              <th>
+                <div class="filter-cell">
+                  <label class="filter-label">INVOICE #</label>
+                  <input type="text" [(ngModel)]="historyFilters.invoiceNumber"
+                         (ngModelChange)="historyFirst = 0; loadSalesHistory()"
+                         placeholder="Invoice No."
+                         class="filter-input"/>
+                </div>
+              </th>
+              <th style="min-width: 260px;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label class="filter-label">DATE & TIME</label>
+                  <p-calendar 
+                    [(ngModel)]="historyDateRange" 
+                    selectionMode="range" 
+                    [readonlyInput]="true" 
+                    placeholder="Filter date..."
+                    (ngModelChange)="historyFirst = 0; loadSalesHistory()"
+                    [showIcon]="false"
+                    [showClear]="false"
+                    [numberOfMonths]="2"
+                    [showButtonBar]="true"
+                    (onClear)="historyDateRange = []; historyFirst = 0; loadSalesHistory()"
+                    styleClass="sales-date-picker-sm"
+                    appendTo="body">
+                  </p-calendar>
+                </div>
+              </th>
+              <th>
+                <div class="filter-cell">
+                  <label class="filter-label">CUSTOMER</label>
+                  <input type="text" [(ngModel)]="historyFilters.customerName"
+                         (ngModelChange)="historyFirst = 0; loadSalesHistory()"
+                         placeholder="Customer Name"
+                         class="filter-input"/>
+                </div>
+              </th>
+              <th>
+                <div class="filter-cell">
+                  <label class="filter-label">ITEMS</label>
+                </div>
+              </th>
+              <th>
+                <div class="filter-cell">
+                  <label class="filter-label">PAYMENT</label>
+                  <p-dropdown
+                          [options]="[{label: 'All', value: ''}, {label: 'Cash', value: 'CASH'}, {label: 'Card', value: 'CARD'}, {label: 'Transfer', value: 'TRANSFER'}, {label: 'Credit', value: 'CREDIT'}]"
+                          [(ngModel)]="historyFilters.paymentMethod"
+                          optionLabel="label"
+                          optionValue="value"
+                          (onChange)="historyFirst = 0; loadSalesHistory()"
+                          placeholder="All">
+                  </p-dropdown>
+                </div>
+              </th>
+              <th class="th-right">
+                <div class="filter-cell">
+                  <label class="filter-label">TOTAL (RS.)</label>
+                </div>
+              </th>
+              <th class="th-center">
+                <div class="filter-cell">
+                  <label class="filter-label">ACTIONS</label>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="loadingHistory">
+              <td colspan="7" class="empty-row"><i class="pi pi-spin pi-spinner"></i> Loading sales history...</td>
+            </tr>
+            <tr *ngIf="!loadingHistory && salesHistory.length === 0">
+              <td colspan="7" class="empty-row"><i class="pi pi-inbox"></i> No sales records found</td>
+            </tr>
+            <tr *ngFor="let sale of salesHistory" class="rj-row">
+              <td><strong class="invoice-badge">{{ sale.invoiceNumber }}</strong></td>
+              <td>{{ sale.createdAt | date:'MMM d, yyyy - h:mm a' }}</td>
+              <td>
+                <div class="customer-info-cell">
+                  <strong>{{ sale.customerName }}</strong>
+                  <small *ngIf="sale.customerPhone" class="text-muted">{{ sale.customerPhone }}</small>
+                </div>
+              </td>
+              <td><span class="item-count-badge">{{ sale.items?.length || 0 }} items</span></td>
+              <td>
+                <span class="pm-pill" [class.pm-cash]="sale.paymentMethod === 'CASH'" [class.pm-card]="sale.paymentMethod === 'CARD'">
+                  {{ sale.paymentMethod }}
+                </span>
+              </td>
+              <td class="th-right"><strong class="amount-val">Rs. {{ sale.netTotal | number:'1.2-2' }}</strong></td>
+              <td class="th-center">
+                <div class="action-buttons">
+                  <button class="action-btn action-btn--view" (click)="viewInvoice(sale)" pTooltip="View & Print Bill">
+                    <i class="pi pi-print"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="rj-table-footer">
+        <span class="rj-table-footer__info">Showing {{ salesHistory.length }} of {{ historyTotalRecords }} invoices</span>
+        <p-paginator
+          [first]="historyFirst"
+          [rows]="historyRows"
+          [totalRecords]="historyTotalRecords"
+          [rowsPerPageOptions]="[10, 25, 50, 100]"
+          (onPageChange)="onHistoryPageChange($event)"
+          styleClass="rj-paginator">
+        </p-paginator>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ======================================================== -->
+<!-- PRINTABLE INVOICE / RECEIPT MODAL                         -->
+<!-- ======================================================== -->
+<p-dialog 
+  [(visible)]="invoiceModalVisible" 
+  [showHeader]="false"
+  [modal]="true" 
+  [style]="{ width: '480px', borderRadius: '14px', overflow: 'hidden' }" 
+  [draggable]="false"
+  styleClass="invoice-dialog">
+
+  <div class="inv-modal-header no-print">
+    <div class="inv-modal-title">
+      <i class="pi pi-check-circle text-success"></i>
+      <h3>Invoice Receipt</h3>
+    </div>
+    <button class="inv-modal-close" (click)="invoiceModalVisible = false"><i class="pi pi-times"></i></button>
+  </div>
+
+  <!-- Thermal / Standard Printable Receipt Body -->
+  <div class="printable-receipt" id="printableInvoice" *ngIf="currentInvoice">
+    <div class="receipt-header">
+      <h2 class="receipt-shop-name">{{ tenantInfo?.shopName || 'Torque Auto Care' }}</h2>
+      <p class="receipt-sub" *ngIf="tenantInfo?.shopAddress" [innerHTML]="tenantInfo.shopAddress.replace('\n', '<br>')"></p>
+      <p class="receipt-info" *ngIf="tenantInfo?.shopPhone">Tel: {{ tenantInfo.shopPhone }} </p>
+      <div class="receipt-divider"></div>
+    </div>
+
+    <div class="receipt-meta">
+      <div class="meta-row">
+        <span>Invoice No:</span>
+        <strong>{{ currentInvoice.invoiceNumber }}</strong>
+      </div>
+      <div class="meta-row">
+        <span>Date:</span>
+        <span>{{ currentInvoice.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+      </div>
+      <div class="meta-row">
+        <span>Customer:</span>
+        <span>{{ currentInvoice.customerName }}</span>
+      </div>
+      <div class="meta-row" *ngIf="currentInvoice.customerPhone">
+        <span>Phone:</span>
+        <span>{{ currentInvoice.customerPhone }}</span>
+      </div>
+      <div class="meta-row" *ngIf="currentInvoice.soldBy">
+        <span>Cashier:</span>
+        <span>{{ currentInvoice.soldBy }}</span>
+      </div>
+    </div>
+
+    <div class="receipt-divider"></div>
+
+    <!-- Items Table -->
+    <table class="receipt-table">
+      <thead>
+        <tr>
+          <th style="text-align: left">Item</th>
+          <th style="text-align: center">Qty</th>
+          <th style="text-align: right">Price</th>
+          <th style="text-align: right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of currentInvoice.items">
+          <td class="r-item-name">{{ item.partName }}</td>
+          <td style="text-align: center">{{ item.quantity }}</td>
+          <td style="text-align: right">{{ item.unitPrice | number:'1.2-2' }}</td>
+          <td style="text-align: right">{{ item.totalPrice | number:'1.2-2' }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="receipt-divider"></div>
+
+    <div class="receipt-totals">
+      <div class="total-row">
+        <span>Subtotal:</span>
+        <span>Rs. {{ currentInvoice.subtotal | number:'1.2-2' }}</span>
+      </div>
+      <div class="total-row" *ngIf="currentInvoice.discount > 0">
+        <span>Discount:</span>
+        <span>- Rs. {{ currentInvoice.discount | number:'1.2-2' }}</span>
+      </div>
+      <div class="total-row net-row">
+        <span>NET TOTAL:</span>
+        <span>Rs. {{ currentInvoice.netTotal | number:'1.2-2' }}</span>
+      </div>
+      <div class="total-row">
+        <span>Payment ({{ currentInvoice.paymentMethod }}):</span>
+        <span>Rs. {{ currentInvoice.paidAmount | number:'1.2-2' }}</span>
+      </div>
+      <div class="total-row" *ngIf="currentInvoice.changeAmount > 0">
+        <span>Change Given:</span>
+        <span>Rs. {{ currentInvoice.changeAmount | number:'1.2-2' }}</span>
+      </div>
+    </div>
+
+    <div class="receipt-divider"></div>
+
+    <div class="receipt-footer">
+      <p class="thank-you">Thank you for your business!</p>
+      <p class="terms">Goods once sold cannot be returned without receipt.</p>
+    </div>
+  </div>
+
+  <!-- Modal Footer Actions (Hidden during print) -->
+  <div class="inv-modal-footer no-print">
+    <button class="inv-btn-close" (click)="invoiceModalVisible = false">Done</button>
+    <button class="inv-btn-print" (click)="printInvoice()">
+      <i class="pi pi-print"></i> Print Bill
+    </button>
+  </div>
+</p-dialog>

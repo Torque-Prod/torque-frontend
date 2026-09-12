@@ -1,0 +1,7 @@
+/* You can add global styles to this file, and also import other style files */
+body {
+    margin: 0;
+    font-family: var(--font-family, "Inter", "Helvetica Neue", sans-serif);
+    background-color: var(--surface-ground);
+    color: var(--text-color);
+}

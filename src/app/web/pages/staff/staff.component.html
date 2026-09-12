@@ -1,0 +1,251 @@
+<p-toast />
+<p-confirmDialog />
+
+<div class="rj-page">
+
+  <!-- ─── Page Header ──────────────────────────────────── -->
+  <div class="rj-header">
+    <div class="rj-header__left">
+      <h1 class="rj-header__title">
+        <i class="pi pi-id-card"></i> Staff Access
+      </h1>
+      <p class="rj-header__subtitle">Manage technicians and workshop staff</p>
+    </div>
+    <div class="rj-header__right">
+      <button class="btn-primary" (click)="openDialog()">
+        <i class="pi pi-user-plus"></i> Add Staff
+      </button>
+    </div>
+  </div>
+
+  <!-- ─── Stats Strip ──────────────────────────────────── -->
+  <div class="stats-strip">
+    <div class="stat-pill stat-pill--blue">
+      <i class="pi pi-users"></i>
+      <span><strong>{{ allTechnicians.length }}</strong> Total Staff</span>
+    </div>
+    <div class="stat-pill stat-pill--green">
+      <i class="pi pi-check-circle"></i>
+      <span><strong>{{ availableCount }}</strong> Available</span>
+    </div>
+    <div class="stat-pill stat-pill--amber">
+      <i class="pi pi-wrench"></i>
+      <span><strong>{{ inJobCount }}</strong> In Job</span>
+    </div>
+  </div>
+
+  <!-- ─── Table Card ───────────────────────────────────── -->
+  <div class="rj-table-card">
+
+    <!-- Toolbar / global search -->
+    <div class="rj-toolbar">
+      <div class="rj-toolbar__search">
+        <i class="pi pi-search"></i>
+        <input
+          type="text"
+          placeholder="Quick search by name or phone…"
+          [(ngModel)]="filters.name"
+          (ngModelChange)="applyFilters()" />
+      </div>
+      <span class="rj-toolbar__count">{{ technicians.length }} of {{ allTechnicians.length }} staff</span>
+    </div>
+
+    <!-- Table -->
+    <div class="rj-table-wrap">
+      <table class="rj-table">
+        <thead>
+          <tr>
+            <th style="width:50px">#</th>
+            <th style="width:52px"></th>
+
+            <!-- Name column with filter -->
+            <th>
+              <div class="filter-cell">
+                <label class="filter-label">NAME</label>
+                <input
+                  type="text"
+                  [(ngModel)]="filters.name"
+                  (ngModelChange)="onFilterChange()"
+                  placeholder="Filter name…"
+                  class="filter-input" />
+              </div>
+            </th>
+
+            <!-- Phone column with filter -->
+            <th>
+              <div class="filter-cell">
+                <label class="filter-label">PHONE</label>
+                <input
+                  type="text"
+                  [(ngModel)]="filters.phone"
+                  (ngModelChange)="onFilterChange()"
+                  placeholder="Filter phone…"
+                  class="filter-input" />
+              </div>
+            </th>
+
+            <!-- Status column -->
+            <th style="width:130px">
+              <div class="filter-cell">
+                <label class="filter-label">STATUS</label>
+                <select class="filter-input" [(ngModel)]="filters.status" (ngModelChange)="onFilterChange()">
+                  <option value="">All</option>
+                  <option value="Available">Available</option>
+                  <option value="In Job">In Job</option>
+                </select>
+              </div>
+            </th>
+
+            <!-- Active Job column -->
+            <th style="width:130px">
+              <div class="filter-cell">
+                <label class="filter-label">ACTIVE JOB</label>
+              </div>
+            </th>
+
+            <th class="th-center" style="width:100px">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <!-- Loading state -->
+          <tr *ngIf="loading">
+            <td colspan="7" class="empty-row">
+              <i class="pi pi-spin pi-spinner"></i> Loading staff…
+            </td>
+          </tr>
+
+          <!-- Empty state -->
+          <tr *ngIf="!loading && technicians.length === 0">
+            <td colspan="7" class="empty-row">
+              <i class="pi pi-inbox"></i>
+              {{ allTechnicians.length === 0 ? 'No staff added yet.' : 'No results match your filter.' }}
+            </td>
+          </tr>
+
+          <!-- Data rows -->
+          <tr *ngFor="let tech of pagedTechnicians; let i = index" class="rj-row">
+            <td class="row-index">{{ first + i + 1 }}</td>
+            <td>
+              <div class="avatar-cell">{{ getInitials(tech.name) }}</div>
+            </td>
+            <td>
+              <strong class="staff-name">{{ tech.name }}</strong>
+            </td>
+            <td>
+              <span class="tech-chip">
+                <i class="pi pi-phone"></i> {{ tech.phone }}
+              </span>
+            </td>
+
+            <!-- STATUS column -->
+            <td>
+              <span
+                class="status-badge"
+                [class.status-badge--available]="tech.status === 'Available'"
+                [class.status-badge--in-job]="tech.status === 'In Job'">
+                <i [class]="tech.status === 'Available' ? 'pi pi-check-circle' : 'pi pi-wrench'"></i>
+                {{ tech.status || 'Available' }}
+              </span>
+            </td>
+
+            <!-- ACTIVE JOB column -->
+            <td>
+              <span *ngIf="tech.jobNumber" class="job-badge">
+                <i class="pi pi-briefcase"></i> {{ tech.jobNumber }}
+              </span>
+              <span *ngIf="!tech.jobNumber" class="no-job">—</span>
+            </td>
+
+            <td>
+              <div class="action-buttons">
+                <button
+                  class="action-btn action-btn--view"
+                  pTooltip="Edit"
+                  tooltipPosition="top"
+                  (click)="openDialog(tech)">
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button
+                  class="action-btn action-btn--status"
+                  pTooltip="Delete"
+                  tooltipPosition="top"
+                  (click)="confirmDelete(tech)">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer + Paginator -->
+    <div class="rj-table-footer">
+      <span class="rj-table-footer__info">
+        Showing {{ pagedTechnicians.length }} of {{ technicians.length }} staff
+        <span *ngIf="technicians.length !== allTechnicians.length" class="footer-filtered">
+          (filtered from {{ allTechnicians.length }})
+        </span>
+      </span>
+      <p-paginator
+        [first]="first"
+        [rows]="rows"
+        [totalRecords]="technicians.length"
+        [rowsPerPageOptions]="rowsPerPageOptions"
+        (onPageChange)="onPageChange($event)"
+        styleClass="rj-paginator">
+      </p-paginator>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Add / Edit Dialog ────────────────────────────── -->
+<p-dialog
+  [(visible)]="dialogVisible"
+  [showHeader]="false"
+  [modal]="true"
+  [style]="{ width: '460px', borderRadius: '14px', overflow: 'hidden' }"
+  [draggable]="false"
+  styleClass="create-job-dialog">
+
+  <div class="cj-header">
+    <div class="cj-header__left">
+      <div class="cj-header__icon">
+        <i class="pi pi-id-card"></i>
+      </div>
+      <div>
+        <h2 class="cj-header__title">{{ editMode ? 'Edit Staff Member' : 'Add New Staff' }}</h2>
+        <p class="cj-header__subtitle">
+          {{ editMode ? 'Update this technician\'s details' : 'Add a new technician to the workshop' }}
+        </p>
+      </div>
+    </div>
+    <button class="cj-header__close" (click)="closeDialog()">
+      <i class="pi pi-times"></i>
+    </button>
+  </div>
+
+  <div class="cj-body">
+    <div class="cj-field">
+      <label>Full Name <span class="req">*</span></label>
+      <input type="text" class="cj-input" [(ngModel)]="form.name" placeholder="e.g. Nimal Perera" />
+    </div>
+    <div class="cj-field">
+      <label>Phone Number <span class="req">*</span></label>
+      <input type="text" class="cj-input" [(ngModel)]="form.phone" placeholder="e.g. 0771234567" />
+    </div>
+    <p *ngIf="formError" class="form-error">
+      <i class="pi pi-exclamation-triangle"></i> {{ formError }}
+    </p>
+  </div>
+
+  <div class="cj-footer">
+    <button class="cj-btn-cancel" (click)="closeDialog()">Cancel</button>
+    <button class="cj-btn-create" (click)="saveStaff()" [disabled]="saving">
+      <i [class]="saving ? 'pi pi-spin pi-spinner' : (editMode ? 'pi pi-check' : 'pi pi-save')"></i>
+      {{ editMode ? 'Update' : 'Save' }}
+    </button>
+  </div>
+</p-dialog>

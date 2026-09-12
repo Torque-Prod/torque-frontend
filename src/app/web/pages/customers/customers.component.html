@@ -1,0 +1,149 @@
+<p-toast />
+<p-confirmDialog />
+
+<div class="rj-page">
+  <!-- Header -->
+  <div class="rj-header">
+    <div class="rj-header__left">
+      <h1 class="rj-header__title"><i class="pi pi-users"></i> Customers</h1>
+      <p class="rj-header__subtitle">Manage all customers in the repair system</p>
+    </div>
+    <div class="rj-header__right">
+      <button *appHasPrivilege="'CREATE_CUSTOMER'" class="btn-primary" (click)="openDialog()">
+        <i class="pi pi-user-plus"></i> Add Customer
+      </button>
+    </div>
+  </div>
+
+  <!-- Table Card -->
+  <div class="rj-table-card">
+    <!-- Toolbar -->
+    <div class="rj-toolbar">
+
+    </div>
+
+    <!-- Table -->
+    <div class="rj-table-wrap">
+      <table class="rj-table">
+        <thead>
+          <tr>
+            <th style="width:50px">#</th>
+            <th>
+              <div class="filter-cell">
+                <label class="filter-label">NAME</label>
+                <input type="text" [(ngModel)]="filters.name"
+                       (ngModelChange)="onFilterChange()"
+                       placeholder="Name"
+                       class="filter-input" />
+              </div>
+            </th>
+            <th>
+              <div class="filter-cell">
+                <label class="filter-label">PHONE</label>
+                <input type="text" [(ngModel)]="filters.phone"
+                       (ngModelChange)="onFilterChange()"
+                       placeholder="Phone"
+                       class="filter-input" />
+              </div>
+            </th>
+            <th>
+              <div class="filter-cell">
+                <label class="filter-label">ADDRESS</label>
+                <input type="text" [(ngModel)]="filters.address"
+                       (ngModelChange)="onFilterChange()"
+                       placeholder="Address"
+                       class="filter-input" />
+              </div>
+            </th>
+            <th>REGISTERED</th>
+            <th class="th-center" style="width:120px">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="loading">
+            <td colspan="6" class="empty-row"><i class="pi pi-spin pi-spinner"></i> Loading...</td>
+          </tr>
+          <tr *ngIf="!loading && customers.length === 0">
+            <td colspan="6" class="empty-row"><i class="pi pi-inbox"></i> No customers found</td>
+          </tr>
+          <tr *ngFor="let customer of customers; let i = index" class="rj-row">
+            <td class="row-index">{{ first + i + 1 }}</td>
+            <td><strong class="customer-name">{{ customer.name }}</strong></td>
+            <td>
+              <span class="tech-chip"><i class="pi pi-phone"></i> {{ customer.phone }}</span>
+            </td>
+            <td class="item-cell">{{ customer.address || '—' }}</td>
+            <td class="customer-phone">{{ customer.createdAt | date:'dd MMM yyyy' }}</td>
+            <td>
+              <div class="action-buttons">
+                <button *appHasPrivilege="'UPDATE_CUSTOMER'" class="action-btn action-btn--view" pTooltip="Edit" (click)="openDialog(customer)">
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button *appHasPrivilege="'DELETE_CUSTOMER'" class="action-btn action-btn--status" pTooltip="Delete" (click)="confirmDelete(customer)">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer + Paginator -->
+    <div class="rj-table-footer">
+      <span class="rj-table-footer__info">Showing {{ customers.length }} of {{ totalRecords }} customers</span>
+      <p-paginator
+        [first]="first"
+        [rows]="rows"
+        [totalRecords]="totalRecords"
+        [rowsPerPageOptions]="[10, 25, 50, 100]"
+        (onPageChange)="onPageChange($event)"
+        styleClass="rj-paginator">
+      </p-paginator>
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit Dialog -->
+<p-dialog [(visible)]="dialogVisible" [showHeader]="false"
+  [modal]="true" [style]="{ width: '480px', borderRadius: '14px', overflow: 'hidden' }" [draggable]="false"
+  styleClass="create-job-dialog">
+
+  <div class="cj-header">
+    <div class="cj-header__left">
+      <div class="cj-header__icon" style="background:#16a34a">
+        <i class="pi pi-user-plus"></i>
+      </div>
+      <div>
+        <h2 class="cj-header__title">{{ editMode ? 'Edit Customer' : 'New Customer' }}</h2>
+        <p class="cj-header__subtitle">{{ editMode ? 'Update customer details' : 'Add a new customer to the system' }}</p>
+      </div>
+    </div>
+    <button class="cj-header__close" (click)="closeDialog()">
+      <i class="pi pi-times"></i>
+    </button>
+  </div>
+
+  <div class="cj-body">
+    <div class="cj-field">
+      <label>Full Name <span class="req">*</span></label>
+      <input type="text" class="cj-input" [(ngModel)]="form.name" placeholder="e.g. Kamal Perera" />
+    </div>
+    <div class="cj-field">
+      <label>Phone Number <span class="req">*</span></label>
+      <input type="text" class="cj-input" [(ngModel)]="form.phone" placeholder="e.g. 0771234567" />
+    </div>
+    <div class="cj-field">
+      <label>Address</label>
+      <input type="text" class="cj-input" [(ngModel)]="form.address" placeholder="e.g. 45 Main Street, Colombo" />
+    </div>
+    <p *ngIf="formError" class="form-error"><i class="pi pi-exclamation-triangle"></i> {{ formError }}</p>
+  </div>
+
+  <div class="cj-footer">
+    <button class="cj-btn-cancel" (click)="closeDialog()">Cancel</button>
+    <button class="cj-btn-create" (click)="saveCustomer()" [disabled]="saving">
+      <i [class]="editMode ? 'pi pi-check' : 'pi pi-save'"></i> {{ editMode ? 'Update' : 'Save' }}
+    </button>
+  </div>
+</p-dialog>

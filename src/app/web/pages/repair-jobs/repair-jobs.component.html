@@ -1,0 +1,826 @@
+<p-toast/>
+
+<div class="rj-page">
+    <!-- ─── Page Header ─── -->
+    <div class="rj-header">
+        <div class="rj-header__left">
+            <h1 class="rj-header__title"><i class="pi pi-wrench"></i> Repair Jobs</h1>
+            <p class="rj-header__subtitle">Track repairs, manage parts, and handle billing</p>
+        </div>
+        <div class="rj-header__right">
+            <button class="btn-export" (click)="exportToExcel()" [disabled]="exporting">
+                <i class="pi" [ngClass]="exporting ? 'pi-spin pi-spinner' : 'pi-file-excel'"></i>
+                {{ exporting ? 'Exporting...' : 'Export Excel' }}
+            </button>
+            <button *appHasPrivilege="'CREATE_JOB'" class="btn-primary" (click)="openCreateDialog()">
+                <i class="pi pi-plus"></i> New Repair Job
+            </button>
+        </div>
+    </div>
+
+    <!-- ─── Stats Row ─── -->
+    <div class="rj-stats">
+        <div class="stat-card stat-card--blue" (click)="filterByStatus(null)">
+            <div class="stat-card__dot" style="background:#3b82f6"></div>
+            <div class="stat-card__body">
+                <span class="stat-card__label">All Jobs</span>
+                <span class="stat-card__value">{{ totalCount }}</span>
+                <span class="stat-card__sub">Total repair jobs</span>
+            </div>
+        </div>
+        <div *ngFor="let s of statusConfigs | slice:0:4" class="stat-card" (click)="filterByStatus(s.statusKey)">
+            <div class="stat-card__dot" [style.background]="s.color"></div>
+            <div class="stat-card__body">
+                <span class="stat-card__label">{{ s.displayName }}</span>
+                <span class="stat-card__value">{{ countByStatus(s.statusKey) }}</span>
+                <span class="stat-card__sub">{{ s.displayName }} status</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Table Card ─── -->
+    <div class="rj-table-card">
+        <!-- Toolbar -->
+        <div class="rj-toolbar">
+
+            <div class="rj-toolbar__tabs">
+                <button class="filter-tab" [class.filter-tab--active]="activeStatusFilter === null"
+                        (click)="filterByStatus(null)">
+                    All <span class="filter-tab__count">{{ totalCount }}</span>
+                </button>
+                <button *ngFor="let s of statusConfigs" class="filter-tab"
+                        [class.filter-tab--active]="activeStatusFilter === s.statusKey"
+                        (click)="filterByStatus(s.statusKey)">
+                    {{ s.displayName }} <span class="filter-tab__count">{{ countByStatus(s.statusKey) }}</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="rj-table-wrap">
+            <table class="rj-table">
+                <thead>
+                <tr>
+                    <th>
+                        <div class="filter-cell">
+                            <label class="filter-label">Job No.</label>
+                            <input type="text" [(ngModel)]="filters.jobNumber"
+                                   (ngModelChange)="onFilterChange()"
+                                   placeholder="Job No."
+                                   class="filter-input"/>
+                        </div>
+                    </th>
+                    <th>
+
+                        <div class="filter-cell">
+                            <label class="filter-label">CUSTOMER</label>
+                            <input type="text" [(ngModel)]="filters.customerName"
+                                   (ngModelChange)="onFilterChange()"
+                                   placeholder="Customer"
+                                   class="filter-input"/>
+                        </div>
+
+
+                    </th>
+                    <th>
+                        <div class="filter-cell">
+                            <label class="filter-label">ITEM</label>
+                            <input type="text" [(ngModel)]="filters.itemName"
+                                   (ngModelChange)="onFilterChange()"
+                                   placeholder="Item"
+                                   class="filter-input"/>
+                        </div>
+                    </th>
+                    <th>
+                        <div class="filter-cell">
+                            <label class="filter-label">MODEL NO.</label>
+                            <input type="text" [(ngModel)]="filters.modelNumber"
+                                   (ngModelChange)="onFilterChange()"
+                                   placeholder="Model No."
+                                   class="filter-input"/>
+                        </div>
+                    </th>
+                    <th>
+                        <div class="filter-cell">
+                            <label class="filter-label">SERIAL NO.</label>
+                            <input type="text" [(ngModel)]="filters.serialNumber"
+                                   (ngModelChange)="onFilterChange()"
+                                   placeholder="Serial No."
+                                   class="filter-input"/>
+                        </div>
+                    </th>
+                    <th>
+                        <div class="filter-cell">
+                            <label class="filter-label">TECHNICIAN</label>
+                            <input type="text" [(ngModel)]="filters.technicianName"
+                                   (ngModelChange)="onFilterChange()"
+                                   placeholder="Technician"
+                                   class="filter-input"/>
+                        </div>
+
+
+                    </th>
+
+
+                    <th>
+                        <div class="filter-cell">
+                            <label class="filter-label">STATUS</label>
+                            <p-dropdown
+                                    [options]="statusConfigs"
+                                    [(ngModel)]="filters.status"
+                                    optionLabel="displayName"
+                                    optionValue="statusKey"
+                                    (onChange)="onFilterChange()"
+                                    placeholder="All">
+                            </p-dropdown>
+                        </div>
+
+                    </th>
+                    <th>PAYMENT</th>
+                    <th class="th-right">NET TOTAL</th>
+                    <th class="th-center">ACTIONS</th>
+
+
+                </tr>
+                </thead>
+                <tbody>
+                <tr *ngIf="loading">
+                    <td colspan="10" class="empty-row"><i class="pi pi-spin pi-spinner"></i> Loading...</td>
+                </tr>
+                <tr *ngIf="!loading && jobs.length === 0">
+                    <td colspan="10" class="empty-row"><i class="pi pi-inbox"></i> No repair jobs found</td>
+                </tr>
+                <tr *ngFor="let job of jobs" class="rj-row">
+                    <!-- Job No -->
+                    <td>
+                        <span class="job-number" (click)="openDetailDialog(job)">{{ job.jobNumber }}</span>
+
+                    </td>
+                    <!-- Customer -->
+                    <td>
+                        <div class="customer-cell">
+                            <span class="customer-name">{{ job.customerName }}</span>
+                            <span class="customer-phone">{{ job.customerPhone }}</span>
+                        </div>
+                    </td>
+                    <!-- Item -->
+                    <td class="item-cell">{{ job.itemName }}</td>
+                    <!-- Model Number -->
+                    <td class="item-cell">
+                        <span *ngIf="job.modelNumber" class="model-chip">{{ job.modelNumber }}</span>
+                        <span *ngIf="!job.modelNumber" class="text-muted">—</span>
+                    </td>
+                    <!-- Serial Number -->
+                    <td class="item-cell">
+                        <span *ngIf="job.serialNumber" class="serial-chip">{{ job.serialNumber }}</span>
+                        <span *ngIf="!job.serialNumber" class="text-muted">—</span>
+                    </td>
+                    <!-- Technician -->
+                    <td>
+              <span *ngIf="job.technicianName && job.technicianName !== 'Unassigned'" class="tech-chip">
+                <i class="pi pi-user"></i> {{ job.technicianName }}
+              </span>
+                        <span *ngIf="!job.technicianName || job.technicianName === 'Unassigned'"
+                              class="tech-unassigned">
+                Unassigned
+              </span>
+                    </td>
+                    <!-- Status -->
+                    <td>
+              <span class="status-pill"
+                    [style.background]="getStatusOption(job.status)?.bg"
+                    [style.color]="getStatusOption(job.status)?.color"
+                    [style.border-color]="getStatusOption(job.status)?.border">
+                <i [class]="getStatusOption(job.status)?.icon || 'pi pi-circle'"></i>
+                  {{ getStatusLabel(job.status) }}
+              </span>
+                    </td>
+                    <!-- Payment -->
+                    <td>
+              <span class="payment-pill" [class.payment-pill--paid]="job.paid" [class.payment-pill--unpaid]="!job.paid">
+                <i [class]="job.paid ? 'pi pi-check' : 'pi pi-times'"></i>
+                  {{ job.paid ? 'Paid' : 'Unpaid' }}
+              </span>
+                    </td>
+                    <!-- Net Total -->
+                    <td class="td-right">
+              <span class="net-total" [class.net-total--zero]="!job.netTotal || job.netTotal === 0">
+                Rs. {{ (job.netTotal || 0) | number:'1.2-2' }}
+              </span>
+                    </td>
+                    <!-- Actions -->
+                    <td>
+                        <div class="action-buttons">
+                            <button class="action-btn action-btn--view" pTooltip="View Details"
+                                    (click)="openDetailDialog(job)">
+                                <i class="pi pi-eye"></i>
+                            </button>
+                            <button *appHasPrivilege="'UPDATE_JOB_STATUS'" class="action-btn action-btn--assign" pTooltip="Assign Staff"
+                                    (click)="openAssignDialog(job)">
+                                <i class="pi pi-user-plus"></i>
+                            </button>
+                            <button *appHasPrivilege="'UPDATE_JOB_STATUS'" class="action-btn action-btn--status" pTooltip="Update Status"
+                                    (click)="openStatusDialog(job)">
+                                <i class="pi pi-arrow-right-arrow-left"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Table Footer -->
+        <div class="rj-table-footer">
+            <span class="rj-table-footer__info">Showing {{ jobs.length }} of {{ totalRecords }} jobs</span>
+            <p-paginator
+                    [first]="first"
+                    [rows]="rows"
+                    [totalRecords]="totalRecords"
+                    [rowsPerPageOptions]="[10, 25, 50, 100]"
+                    (onPageChange)="onPageChange($event)"
+                    styleClass="rj-paginator">
+            </p-paginator>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Detail & Billing Dialog ─── -->
+<p-dialog [(visible)]="detailDialogVisible" [showHeader]="false"
+          [modal]="true" [style]="{ width: '780px', borderRadius: '14px', overflow: 'hidden' }" [draggable]="false"
+          styleClass="detail-job-dialog">
+
+    <div *ngIf="selectedJob" style="max-height: 90vh;overflow-y: auto">
+        <!-- Custom Header -->
+        <div class="dj-header">
+            <div class="dj-header__left">
+                <div class="dj-header__icon">
+                    <i class="pi pi-clipboard"></i>
+                </div>
+                <div>
+                    <h2 class="dj-header__title">Job Details</h2>
+                    <p class="dj-header__subtitle">{{ selectedJob.jobNumber }} ·
+                        Received {{ selectedJob.receivedDate }}</p>
+                </div>
+            </div>
+            <button class="cj-header__close" (click)="detailDialogVisible = false">
+                <i class="pi pi-times"></i>
+            </button>
+        </div>
+
+        <!-- Info Strip -->
+        <div class="dj-info-strip">
+            <div class="dj-info-cell">
+                <span class="dj-info-label">Customer</span>
+                <span class="dj-info-value">{{ selectedJob.customerName }}</span>
+                <span class="dj-info-sub">{{ selectedJob.customerPhone }}</span>
+            </div>
+            <div class="dj-info-divider"></div>
+            <div class="dj-info-cell">
+                <span class="dj-info-label">Technician</span>
+                <span class="dj-info-value" [class.dj-info-value--muted]="!selectedJob.technicianId">
+          {{ selectedJob.technicianName || 'Not Assigned' }}
+        </span>
+            </div>
+            <div class="dj-info-divider"></div>
+            <div class="dj-info-cell">
+                <span class="dj-info-label">Status</span>
+                <span class="status-pill"
+                      [style.background]="getStatusOption(selectedJob.status)?.bg"
+                      [style.color]="getStatusOption(selectedJob.status)?.color"
+                      [style.border-color]="getStatusOption(selectedJob.status)?.border">
+          <i [class]="getStatusOption(selectedJob.status)?.icon || ''"></i>
+                    {{ getStatusLabel(selectedJob.status) }}
+        </span>
+            </div>
+            <div class="dj-info-divider"></div>
+            <div class="dj-info-cell">
+                <span class="dj-info-label">Payment</span>
+                <span class="payment-pill" [class.payment-pill--paid]="selectedJob.paid"
+                      [class.payment-pill--unpaid]="!selectedJob.paid">
+          <i [class]="selectedJob.paid ? 'pi pi-check' : 'pi pi-times'"></i>
+                    {{ selectedJob.paid ? 'Paid' : 'Unpaid' }}
+        </span>
+            </div>
+        </div>
+
+        <!-- Parts Usage Section -->
+        <div class="dj-section">
+            <div class="dj-section-header">
+                <div class="dj-section-icon"><i class="pi pi-cog"></i></div>
+                <span class="dj-section-title">Parts Usage</span>
+            </div>
+
+            <!-- Paid lock notice -->
+            <div *ngIf="selectedJob.paid" class="dj-paid-banner">
+                <i class="pi pi-lock"></i>
+                <span>This job is <strong>PAID</strong> — editing is disabled.</span>
+            </div>
+
+            <div *ngIf="!selectedJob.paid && selectedJob.status !== 'DELIVERED'" class="dj-parts-adder">
+                <p-dropdown [options]="inventory" [(ngModel)]="selectedPartId"
+                            optionLabel="name" optionValue="id" placeholder="Select a part..."
+                            [filter]="true" styleClass="dj-part-dropdown cj-dropdown"/>
+                <p-inputNumber [(ngModel)]="partQty" [showButtons]="true" [min]="1" styleClass="dj-qty-input"/>
+                <button class="cj-btn-create" (click)="addPart()" [disabled]="saving">
+                    <i class="pi pi-plus"></i> Add
+                </button>
+            </div>
+
+            <div class="dj-parts-table-wrap">
+                <table class="rj-table dj-parts-table">
+                    <thead>
+                    <tr>
+                        <th>PART NAME</th>
+                        <th>PRICE</th>
+                        <th>QTY</th>
+                        <th class="th-right">TOTAL</th>
+                        <th style="width:44px"></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr *ngIf="!selectedJob.usedParts || selectedJob.usedParts.length === 0">
+                        <td colspan="5" class="empty-row" style="padding:1.5rem">No parts added yet</td>
+                    </tr>
+                    <tr *ngFor="let up of selectedJob.usedParts" class="rj-row">
+                        <td class="customer-name">{{ up.partName }}</td>
+                        <td>Rs. {{ up.unitPrice | number:'1.2-2' }}</td>
+                        <td>{{ up.quantity }}</td>
+                        <td class="td-right"><strong>Rs. {{ up.totalPrice | number:'1.2-2' }}</strong></td>
+                        <td>
+                            <button *ngIf="!selectedJob.paid && selectedJob.status !== 'DELIVERED'"
+                                    class="dj-delete-btn" (click)="removePart(up.id)" pTooltip="Remove part">
+                                <i class="pi pi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    </tbody>
+                    <tfoot>
+                    <tr>
+                        <td colspan="3" class="td-right"><strong>Parts Total</strong></td>
+                        <td class="td-right dj-parts-total">Rs. {{ selectedJob.partsTotal | number:'1.2-2' }}</td>
+                        <td></td>
+                    </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Billing Summary Section -->
+        <div class="dj-section">
+            <div class="dj-section-header">
+                <div class="dj-section-icon"><i class="pi pi-receipt"></i></div>
+                <span class="dj-section-title">Billing Summary</span>
+            </div>
+
+            <div class="dj-billing-card">
+                <div class="dj-bill-row">
+                    <span>Parts Cost</span>
+                    <span class="dj-bill-value">Rs. {{ selectedJob.partsTotal | number:'1.2-2' }}</span>
+                </div>
+                <div class="dj-bill-row">
+                    <span>Service Charge (Labor)</span>
+                    <div *ngIf="!selectedJob.paid && selectedJob.status !== 'DELIVERED'" class="dj-service-input">
+                        <span class="dj-rs-prefix">Rs.</span>
+                        <p-inputNumber [(ngModel)]="serviceChargeInput" mode="decimal" [minFractionDigits]="2"
+                                       (onBlur)="updateServiceCharge()" styleClass="dj-charge-num"/>
+                    </div>
+                    <span *ngIf="selectedJob.paid || selectedJob.status === 'DELIVERED'"
+                          class="dj-bill-value">Rs. {{ selectedJob.serviceCharge | number:'1.2-2' }}</span>
+                </div>
+                <div class="dj-bill-row dj-bill-row--total">
+                    <span>Net Total Amount</span>
+                    <span>Rs. {{ selectedJob.netTotal | number:'1.2-2' }}</span>
+                </div>
+            </div>
+
+            <div *ngIf="!selectedJob.paid" class="dj-payment-banner">
+                <div class="dj-payment-banner__text"><i class="pi pi-info-circle"></i> This job is currently <strong>UNPAID</strong>
+                </div>
+                <button class="dj-pay-btn" (click)="markAsPaid()" [disabled]="saving">
+                    <i class="pi pi-check-circle"></i> Mark as Paid
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="cj-footer">
+            <button class="cj-btn-cancel" (click)="detailDialogVisible = false">Close</button>
+            <button *ngIf="selectedJob.paid" class="dj-print-btn" (click)="printBill()">
+                <i class="pi pi-print"></i> Print Bill
+            </button>
+        </div>
+    </div>
+</p-dialog>
+
+<!-- ─── Create Job Dialog ─── -->
+<p-dialog [(visible)]="createDialogVisible" [showHeader]="false"
+          [modal]="true" [style]="{ width: '520px', borderRadius: '14px', overflow: 'hidden' }" [draggable]="false"
+          styleClass="create-job-dialog">
+
+    <!-- Custom Header -->
+    <div class="cj-header">
+        <div class="cj-header__left">
+            <div class="cj-header__icon">
+                <i class="pi pi-wrench"></i>
+            </div>
+            <div>
+                <h2 class="cj-header__title">New Repair Job</h2>
+                <p class="cj-header__subtitle">Fill in the details to create a new job</p>
+            </div>
+        </div>
+        <button class="cj-header__close" (click)="createDialogVisible = false">
+            <i class="pi pi-times"></i>
+        </button>
+    </div>
+
+    <!-- Form Body -->
+    <div class="cj-body">
+        <div class="cj-field">
+            <label>Customer <span class="req">*</span></label>
+            <div class="customer-picker">
+                <button class="assign-picker-trigger" type="button" (click)="toggleCustomerDropdown($event)">
+                    <span class="staff-avatar customer-avatar">
+                        {{ getCustomerInitials(selectedCustomer?.name) }}
+                    </span>
+                    <span class="assign-picker-name" [class.placeholder-text]="!selectedCustomer">
+                        {{ selectedCustomer?.name || 'Select a customer...' }}
+                    </span>
+                    <i class="pi pi-chevron-down assign-picker-chevron" [class.is-open]="customerDropdownOpen"></i>
+                </button>
+
+                <div class="customer-picker-menu" *ngIf="customerDropdownOpen" (click)="$event.stopPropagation()">
+                    <button class="customer-picker-option"
+                            type="button"
+                            *ngFor="let customer of customers"
+                            [class.is-selected]="customer.id === form.customerId"
+                            [class.customer-picker-option--add]="customer.id === -1"
+                            (click)="selectCustomer(customer)">
+                        <ng-container *ngIf="customer.id !== -1; else addCustomerOption">
+                            <span class="staff-avatar customer-avatar">
+                                {{ getCustomerInitials(customer.name) }}
+                            </span>
+                            <span class="assign-option-name">{{ customer.name }}</span>
+                            <span class="customer-phone-pill">{{ customer.phone || 'No phone' }}</span>
+                        </ng-container>
+                        <ng-template #addCustomerOption>
+                            <i class="pi pi-plus"></i>
+                            <span>Add new customer</span>
+                        </ng-template>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="cj-field">
+            <label>Item Name <span class="req">*</span></label>
+            <input type="text" class="cj-input" [(ngModel)]="form.itemName" placeholder="e.g. Sewing Machine"/>
+        </div>
+        <div class="cj-field-row">
+            <div class="cj-field">
+                <label>Model Number</label>
+                <input type="text" class="cj-input" [(ngModel)]="form.modelNumber" placeholder="e.g. SN-2000"/>
+            </div>
+            <div class="cj-field">
+                <label>Serial Number</label>
+                <input type="text" class="cj-input" [(ngModel)]="form.serialNumber" placeholder="e.g. SN123456789"/>
+            </div>
+        </div>
+        <div class="cj-field">
+            <label>Problem Description</label>
+            <textarea class="cj-textarea" [(ngModel)]="form.problemDescription" rows="3"
+                      placeholder="Describe the issue..."></textarea>
+        </div>
+        <div class="cj-field-row">
+            <div class="cj-field">
+                <label>Received Date</label>
+                <p-calendar [(ngModel)]="form.receivedDate" dateFormat="yy-mm-dd" [showIcon]="true"
+                            styleClass="w-full cj-calendar"/>
+            </div>
+            <div class="cj-field">
+                <label>Expected Date</label>
+                <p-calendar [(ngModel)]="form.expectedDate" dateFormat="yy-mm-dd" [showIcon]="true"
+                            styleClass="w-full cj-calendar"/>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="cj-footer">
+        <button class="cj-btn-cancel" (click)="createDialogVisible = false">Cancel</button>
+        <button class="cj-btn-create" (click)="createJob()" [disabled]="saving">
+            <i class="pi pi-save"></i> Create Job
+        </button>
+    </div>
+</p-dialog>
+
+<!-- Add Customer Dialog -->
+<p-dialog [(visible)]="customerDialogVisible" [showHeader]="false"
+          [modal]="true" [style]="{ width: '420px', maxWidth: 'calc(100vw - 32px)' }"
+          [draggable]="false" styleClass="assign-tech-dialog">
+    <div class="assign-modal">
+        <header class="assign-modal__header">
+            <div>
+                <h2>Add customer</h2>
+                <p>Create a customer and use them for this repair job</p>
+            </div>
+            <button class="assign-modal__close" type="button" aria-label="Close" (click)="customerDialogVisible = false">
+                <i class="pi pi-times"></i>
+            </button>
+        </header>
+
+        <div class="assign-modal__body add-customer-modal__body">
+            <div class="assign-form-field">
+                <label class="assign-field-label">Name <span class="req">*</span></label>
+                <input pInputText class="assign-text-input" type="text" [(ngModel)]="customerForm.name" placeholder="Customer name" />
+            </div>
+            <div class="assign-form-field">
+                <label class="assign-field-label">Phone <span class="req">*</span></label>
+                <input pInputText class="assign-text-input" type="text" [(ngModel)]="customerForm.phone" placeholder="Phone number" />
+            </div>
+            <div class="assign-form-field">
+                <label class="assign-field-label">Address</label>
+                <textarea class="assign-text-input assign-textarea" [(ngModel)]="customerForm.address" rows="3" placeholder="Customer address"></textarea>
+            </div>
+            <p *ngIf="customerFormError" class="form-error">{{ customerFormError }}</p>
+        </div>
+
+        <footer class="assign-modal__footer">
+            <button class="assign-btn assign-btn--ghost" type="button" (click)="customerDialogVisible = false">
+                Cancel
+            </button>
+            <button class="assign-btn assign-btn--primary" type="button" (click)="saveCustomerFromJobDialog()" [disabled]="customerSaving">
+                <i class="pi" [ngClass]="customerSaving ? 'pi-spin pi-spinner' : 'pi-save'"></i>
+                Add Customer
+            </button>
+        </footer>
+    </div>
+</p-dialog>
+
+<!-- ─── Status Update Dialog ─── -->
+<p-dialog [(visible)]="statusDialogVisible" [showHeader]="false"
+          [modal]="true" [style]="{ width: '420px', maxWidth: 'calc(100vw - 32px)' }"
+          [draggable]="false" [contentStyle]="{ overflow: 'visible' }" styleClass="assign-tech-dialog">
+    <div class="assign-modal" *ngIf="selectedJob">
+        <header class="assign-modal__header">
+            <div>
+                <h2>Update job status</h2>
+                <p>Select the next workflow state for this job</p>
+            </div>
+            <button class="assign-modal__close" type="button" aria-label="Close" (click)="statusDialogVisible = false">
+                <i class="pi pi-times"></i>
+            </button>
+        </header>
+
+        <div class="assign-modal__body status-modal__body">
+            <label class="assign-field-label">New status</label>
+            <div class="status-picker">
+                <button class="assign-picker-trigger" type="button" (click)="toggleStatusDropdown($event)">
+                    <span class="status-dot" [style.background]="selectedStatusConfig?.color || '#64748b'"></span>
+                    <span class="assign-picker-name">{{ selectedStatusConfig?.displayName || newStatus }}</span>
+                    <i class="pi pi-chevron-down assign-picker-chevron" [class.is-open]="statusDropdownOpen"></i>
+                </button>
+
+                <div class="status-picker-menu" *ngIf="statusDropdownOpen" (click)="$event.stopPropagation()">
+                    <button class="status-picker-option"
+                            type="button"
+                            *ngFor="let status of statusConfigs"
+                            [class.is-selected]="status.statusKey === newStatus"
+                            (click)="selectStatus(status)">
+                        <span class="status-dot" [style.background]="status.color"></span>
+                        <span class="assign-option-name">{{ status.displayName }}</span>
+                        <span class="status-mini-badge"
+                              [style.background]="status.bg"
+                              [style.color]="status.color"
+                              [style.border-color]="status.border">
+                            {{ status.statusKey }}
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <div *ngIf="newStatus === 'IN_PROGRESS' && !selectedJob.technicianId" class="status-extra-field">
+                <label class="assign-field-label">Staff member</label>
+                <div class="assign-tech-picker">
+                    <button class="assign-picker-trigger" type="button" (click)="toggleAssignDropdown($event)">
+                        <span class="staff-avatar"
+                              [style.background]="selectedAssignStaff?.avatarBg"
+                              [style.color]="selectedAssignStaff?.avatarColor">
+                            {{ selectedAssignStaff?.initials }}
+                        </span>
+                        <span class="assign-picker-name">{{ selectedAssignStaff?.name }}</span>
+                        <i class="pi pi-chevron-down assign-picker-chevron" [class.is-open]="assignDropdownOpen"></i>
+                    </button>
+
+                    <div class="assign-picker-menu" *ngIf="assignDropdownOpen" (click)="$event.stopPropagation()">
+                        <button class="assign-picker-option"
+                                type="button"
+                                *ngFor="let staff of assignStaffMembers"
+                                [class.is-selected]="staff.id === assignTechId"
+                                (click)="selectAssignStaff(staff)">
+                            <span class="staff-avatar"
+                                  [style.background]="staff.avatarBg"
+                                  [style.color]="staff.avatarColor">
+                                {{ staff.initials }}
+                            </span>
+                            <span class="assign-option-name">{{ staff.name }}</span>
+                            <span class="staff-status" [ngClass]="getStaffStatusClass(staff.status)">
+                                {{ staff.status }}
+                            </span>
+                        </button>
+
+                        <button class="assign-add-new" type="button" (click)="openTechnicianDialog()">
+                            <i class="pi pi-plus"></i>
+                            Add new technician
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div *ngIf="newStatus === 'DELIVERED' && !selectedJob.paid" class="payment-alert">
+                <i class="pi pi-exclamation-triangle"></i> Payment is required before delivery.
+            </div>
+            <p *ngIf="statusError" class="form-error">{{ statusError }}</p>
+        </div>
+
+        <footer class="assign-modal__footer">
+            <button class="assign-btn assign-btn--ghost" type="button" (click)="statusDialogVisible = false">
+                Cancel
+            </button>
+            <button class="assign-btn assign-btn--primary" type="button" (click)="saveStatus()" [disabled]="saving">
+                <i class="pi" [ngClass]="saving ? 'pi-spin pi-spinner' : 'pi-check'"></i>
+                Save Changes
+            </button>
+        </footer>
+    </div>
+</p-dialog>
+
+<!-- ─── Assign Dialog ─── -->
+<p-dialog [(visible)]="assignDialogVisible" [showHeader]="false"
+          [modal]="true" [style]="{ width: '420px', maxWidth: 'calc(100vw - 32px)' }"
+          [draggable]="false" [contentStyle]="{ overflow: 'visible' }" styleClass="assign-tech-dialog">
+    <div class="assign-modal" *ngIf="selectedJob">
+        <header class="assign-modal__header">
+            <div>
+                <h2>Assign technician</h2>
+                <p>Select a staff member for this job</p>
+            </div>
+            <button class="assign-modal__close" type="button" aria-label="Close" (click)="assignDialogVisible = false">
+                <i class="pi pi-times"></i>
+            </button>
+        </header>
+
+        <div class="assign-modal__body">
+            <label class="assign-field-label">Staff member</label>
+            <div class="assign-tech-picker">
+                <button class="assign-picker-trigger" type="button" (click)="toggleAssignDropdown($event)">
+                    <span class="staff-avatar"
+                          [style.background]="selectedAssignStaff?.avatarBg"
+                          [style.color]="selectedAssignStaff?.avatarColor">
+                        {{ selectedAssignStaff?.initials }}
+                    </span>
+                    <span class="assign-picker-name">{{ selectedAssignStaff?.name }}</span>
+                    <i class="pi pi-chevron-down assign-picker-chevron" [class.is-open]="assignDropdownOpen"></i>
+                </button>
+
+                <div class="assign-picker-menu" *ngIf="assignDropdownOpen" (click)="$event.stopPropagation()">
+                    <button class="assign-picker-option"
+                            type="button"
+                            *ngFor="let staff of assignStaffMembers"
+                            [class.is-selected]="staff.id === assignTechId"
+                            (click)="selectAssignStaff(staff)">
+                        <span class="staff-avatar"
+                              [style.background]="staff.avatarBg"
+                              [style.color]="staff.avatarColor">
+                            {{ staff.initials }}
+                        </span>
+                        <span class="assign-option-name">{{ staff.name }}</span>
+                        <span class="staff-status" [ngClass]="getStaffStatusClass(staff.status)">
+                            {{ staff.status }}
+                        </span>
+                    </button>
+
+                    <button class="assign-add-new" type="button" (click)="openTechnicianDialog()">
+                        <i class="pi pi-plus"></i>
+                        Add new technician
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <footer class="assign-modal__footer">
+            <button class="assign-btn assign-btn--ghost" type="button" (click)="assignDialogVisible = false">
+                Cancel
+            </button>
+            <button class="assign-btn assign-btn--primary" type="button" (click)="saveAssignment()" [disabled]="saving || !assignTechId">
+                <i class="pi" [ngClass]="saving ? 'pi-spin pi-spinner' : 'pi-check'"></i>
+                Confirm
+            </button>
+        </footer>
+    </div>
+</p-dialog>
+
+<!-- Add Technician Dialog -->
+<p-dialog [(visible)]="technicianDialogVisible" [showHeader]="false"
+          [modal]="true" [style]="{ width: '420px', maxWidth: 'calc(100vw - 32px)' }"
+          [draggable]="false" styleClass="assign-tech-dialog">
+    <div class="assign-modal">
+        <header class="assign-modal__header">
+            <div>
+                <h2>Add technician</h2>
+                <p>Create a staff member and assign them to jobs</p>
+            </div>
+            <button class="assign-modal__close" type="button" aria-label="Close" (click)="technicianDialogVisible = false">
+                <i class="pi pi-times"></i>
+            </button>
+        </header>
+
+        <div class="assign-modal__body add-tech-modal__body">
+            <div class="assign-form-field">
+                <label class="assign-field-label">Name <span class="req">*</span></label>
+                <input pInputText class="assign-text-input" type="text" [(ngModel)]="technicianForm.name" placeholder="Technician name" />
+            </div>
+            <div class="assign-form-field">
+                <label class="assign-field-label">Phone <span class="req">*</span></label>
+                <input pInputText class="assign-text-input" type="text" [(ngModel)]="technicianForm.phone" placeholder="Phone number" />
+            </div>
+            <p *ngIf="technicianFormError" class="form-error">{{ technicianFormError }}</p>
+        </div>
+
+        <footer class="assign-modal__footer">
+            <button class="assign-btn assign-btn--ghost" type="button" (click)="technicianDialogVisible = false">
+                Cancel
+            </button>
+            <button class="assign-btn assign-btn--primary" type="button" (click)="saveTechnician()" [disabled]="technicianSaving">
+                <i class="pi" [ngClass]="technicianSaving ? 'pi-spin pi-spinner' : 'pi-save'"></i>
+                Add Technician
+            </button>
+        </footer>
+    </div>
+</p-dialog>
+
+<!-- ─── Hidden Bill Print Template ─────────────────────────────────────────── -->
+<!-- Visible ONLY during window.print() via @media print CSS -->
+<div id="bill-print-area" *ngIf="selectedJob">
+  <div class="bill-header">
+    <div class="bill-brand">
+      <div class="bill-logo-icon"><i class="pi pi-wrench"></i></div>
+      <div>
+        <h1 class="bill-company">Torque</h1>
+        <p class="bill-tagline">Repair Shop Management System</p>
+      </div>
+    </div>
+    <div class="bill-paid-stamp">✓ PAID</div>
+  </div>
+
+  <div class="bill-meta">
+    <div class="bill-meta__left">
+      <div class="bill-meta-row"><span class="bill-lbl">Invoice No</span><span class="bill-val">{{ selectedJob.jobNumber }}</span></div>
+      <div class="bill-meta-row"><span class="bill-lbl">Customer</span><span class="bill-val">{{ selectedJob.customerName }}</span></div>
+      <div class="bill-meta-row"><span class="bill-lbl">Phone</span><span class="bill-val">{{ selectedJob.customerPhone }}</span></div>
+      <div class="bill-meta-row"><span class="bill-lbl">Item</span><span class="bill-val">{{ selectedJob.itemName }}</span></div>
+    </div>
+    <div class="bill-meta__right">
+      <div class="bill-meta-row"><span class="bill-lbl">Technician</span><span class="bill-val">{{ selectedJob.technicianName || 'Unassigned' }}</span></div>
+      <div class="bill-meta-row"><span class="bill-lbl">Received</span><span class="bill-val">{{ selectedJob.receivedDate }}</span></div>
+      <div class="bill-meta-row" *ngIf="selectedJob.expectedDate"><span class="bill-lbl">Expected</span><span class="bill-val">{{ selectedJob.expectedDate }}</span></div>
+      <div class="bill-meta-row"><span class="bill-lbl">Status</span><span class="bill-val">{{ getStatusLabel(selectedJob.status) }}</span></div>
+    </div>
+  </div>
+
+  <!-- Parts Table -->
+  <table class="bill-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Part Name</th>
+        <th class="bill-th-right">Unit Price</th>
+        <th class="bill-th-right">Qty</th>
+        <th class="bill-th-right">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngIf="!selectedJob.usedParts || selectedJob.usedParts.length === 0">
+        <td colspan="5" class="bill-empty">No parts used</td>
+      </tr>
+      <tr *ngFor="let up of selectedJob.usedParts; let i = index">
+        <td>{{ i + 1 }}</td>
+        <td>{{ up.partName }}</td>
+        <td class="bill-td-right">Rs. {{ up.unitPrice | number:'1.2-2' }}</td>
+        <td class="bill-td-right">{{ up.quantity }}</td>
+        <td class="bill-td-right"><strong>Rs. {{ up.totalPrice | number:'1.2-2' }}</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Totals -->
+  <div class="bill-totals">
+    <div class="bill-total-row"><span>Parts Total</span><span>Rs. {{ selectedJob.partsTotal | number:'1.2-2' }}</span></div>
+    <div class="bill-total-row"><span>Service Charge (Labour)</span><span>Rs. {{ selectedJob.serviceCharge | number:'1.2-2' }}</span></div>
+    <div class="bill-total-row bill-total-row--grand"><span>NET TOTAL</span><span>Rs. {{ selectedJob.netTotal | number:'1.2-2' }}</span></div>
+  </div>
+
+  <div class="bill-footer">
+    <p>Thank you for choosing Torque. Please keep this receipt for your records.</p>
+    <p class="bill-footer__date">Printed: {{ today | date:'dd/MM/yyyy HH:mm' }}</p>
+  </div>
+</div>

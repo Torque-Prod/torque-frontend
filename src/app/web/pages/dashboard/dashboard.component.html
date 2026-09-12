@@ -1,0 +1,165 @@
+<div class="rj-page dash-page">
+  
+  <!-- Welcome Banner -->
+  <div class="welcome-banner">
+    <div class="banner-content">
+      <h1 class="banner-title">Welcome back, {{ username }}!</h1>
+      <p class="banner-subtitle">{{ today | date:'EEEE, MMMM d, yyyy' }}</p>
+    </div>
+    <div class="banner-stats">
+      <div class="b-stat">
+        <span class="b-stat-label">Total Billed</span>
+        <span class="b-stat-val">Rs. {{ totalBilled | number }}</span>
+      </div>
+      <div class="b-divider"></div>
+      <div class="b-stat">
+        <span class="b-stat-label">Open Jobs</span>
+        <span class="b-stat-val">{{ activeJobsCount }}</span>
+      </div>
+      <div class="b-divider"></div>
+      <div class="b-stat">
+        <span class="b-stat-label">Completed</span>
+        <span class="b-stat-val">{{ completedJobsCount }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 Column Layout -->
+  <div class="dash-grid-3col">
+    
+    <!-- Column 1: Recent Jobs -->
+    <div class="dash-col">
+      <div class="rj-table-card h-full">
+        <div class="dash-card-header">
+          <h3 class="section-title"><i class="pi pi-history"></i> Recent Jobs</h3>
+          <button class="btn-link" (click)="router.navigate(['/web/repair-jobs'])">View All</button>
+        </div>
+        <div class="rj-table-wrap">
+          <table class="rj-table">
+            <thead>
+              <tr>
+                <th>JOB NO</th>
+                <th>CUSTOMER</th>
+                <th>STATUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngIf="recentJobs.length === 0">
+                <td colspan="3" class="empty-row">No recent jobs</td>
+              </tr>
+              <tr *ngFor="let job of recentJobs" class="rj-row" style="cursor:pointer" (click)="router.navigate(['/web/repair-jobs'])">
+                <td><span class="job-number">{{ job.jobNumber }}</span></td>
+                <td><strong class="customer-name">{{ job.customerName }}</strong></td>
+                <td>
+                  <span class="status-pill"
+                    [style.background]="getStatusOption(job.status).bg"
+                    [style.color]="getStatusOption(job.status).color"
+                    [style.border-color]="getStatusOption(job.status).border">
+                    <i [class]="getStatusOption(job.status).icon"></i>
+                    {{ getStatusOption(job.status).label }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 2: Unassigned Jobs -->
+    <div class="dash-col">
+      <div class="rj-table-card h-full border-alert">
+        <div class="dash-card-header">
+          <h3 class="section-title text-alert"><i class="pi pi-exclamation-circle"></i> Unassigned Jobs</h3>
+          <span class="badge-alert" *ngIf="hasUnassignedJobs">{{ unassignedJobs.length }} need attention</span>
+        </div>
+        <div class="rj-table-wrap">
+          <table class="rj-table">
+            <thead>
+              <tr>
+                <th>JOB NO</th>
+                <th>ITEM</th>
+                <th>RECEIVED</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngIf="!hasUnassignedJobs">
+                <td colspan="3" class="empty-row empty-success">
+                  <i class="pi pi-check-circle"></i> All jobs assigned
+                </td>
+              </tr>
+              <tr *ngFor="let job of unassignedJobs" class="rj-row" style="cursor:pointer" (click)="router.navigate(['/web/repair-jobs'])">
+                <td><span class="job-number">{{ job.jobNumber }}</span></td>
+                <td><strong class="customer-name">{{ job.itemName }}</strong></td>
+                <td class="text-muted">{{ job.receivedDate | date:'MMM d' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 3: Right Panel -->
+    <div class="dash-col right-panel">
+      
+      <!-- Alert Card -->
+      <div class="alert-card" *ngIf="hasUnassignedJobs">
+        <div class="alert-icon"><i class="pi pi-exclamation-triangle"></i></div>
+        <div class="alert-content">
+          <h4>Action Required</h4>
+          <p>{{ unassignedJobs.length }} active jobs are waiting to be assigned to a technician.</p>
+          <button class="btn-alert" (click)="router.navigate(['/web/repair-jobs'])">Assign Now</button>
+        </div>
+      </div>
+
+      <!-- Job Status Breakdown -->
+      <div class="quick-section" style="margin-bottom: 2rem;">
+        <h3 class="section-title"><i class="pi pi-chart-bar"></i> Job Breakdown</h3>
+        <div class="breakdown-card">
+          <div *ngFor="let s of statusConfigs | slice:0:4" class="breakdown-item">
+            <div class="breakdown-info">
+              <span class="breakdown-label">{{ s.displayName }}</span>
+              <span class="breakdown-val">{{ getJobsByStatusCount(s.statusKey) }}</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" [style.width.%]="getStatusPercent(s.statusKey)" [style.background]="s.color"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+<!--      <div class="quick-section">-->
+<!--        <h3 class="section-title"><i class="pi pi-th-large"></i> Quick Management</h3>-->
+<!--        <div class="tiles-grid">-->
+<!--          <div class="tile" (click)="router.navigate(['/web/repair-jobs'])">-->
+<!--            <div class="tile-icon tile-icon&#45;&#45;jobs"><i class="pi pi-list"></i></div>-->
+<!--            <div class="tile-info">-->
+<!--              <h4>Workflow</h4>-->
+<!--              <p>Track repair progress</p>-->
+<!--            </div>-->
+<!--            <i class="pi pi-chevron-right tile-arrow"></i>-->
+<!--          </div>-->
+<!--          <div class="tile" (click)="router.navigate(['/web/customers'])">-->
+<!--            <div class="tile-icon tile-icon&#45;&#45;cust"><i class="pi pi-user-plus"></i></div>-->
+<!--            <div class="tile-info">-->
+<!--              <h4>Directory</h4>-->
+<!--              <p>Manage customer data</p>-->
+<!--            </div>-->
+<!--            <i class="pi pi-chevron-right tile-arrow"></i>-->
+<!--          </div>-->
+<!--          <div class="tile" (click)="router.navigate(['/web/inventory'])">-->
+<!--            <div class="tile-icon tile-icon&#45;&#45;inv"><i class="pi pi-box"></i></div>-->
+<!--            <div class="tile-info">-->
+<!--              <h4>Inventory</h4>-->
+<!--              <p>Stock & Spare parts</p>-->
+<!--            </div>-->
+<!--            <i class="pi pi-chevron-right tile-arrow"></i>-->
+<!--          </div>-->
+<!--        </div>-->
+<!--      </div>-->
+
+    </div>
+
+  </div>
+</div>
