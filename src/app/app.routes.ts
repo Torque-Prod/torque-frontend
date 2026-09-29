@@ -25,5 +25,12 @@ export const routes: Routes = [
   { path: 'repair-jobs', redirectTo: 'web/repair-jobs', pathMatch: 'full' },
   { path: 'inventory', redirectTo: 'web/inventory', pathMatch: 'full' },
   { path: 'settings', redirectTo: 'web/settings', pathMatch: 'full' },
+  
+  // Public Customer QR Menu
+  {
+    path: 't/:token',
+    loadComponent: () => import('./public/customer-menu/customer-menu.component').then(m => m.CustomerMenuComponent)
+  },
+
   { path: '**', redirectTo: 'login' }
 ];

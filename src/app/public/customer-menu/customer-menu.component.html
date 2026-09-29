@@ -1,0 +1,140 @@
+<!-- Loading -->
+<div class="cm-loading" *ngIf="loading">
+  <div class="cm-spinner"></div>
+  <p>Loading menu…</p>
+</div>
+
+<!-- Error -->
+<div class="cm-error" *ngIf="!loading && tableError">
+  <div class="cm-error__icon">⚠️</div>
+  <h2>Table Not Found</h2>
+  <p>This QR code is no longer valid. Please ask your waiter for a new QR code.</p>
+</div>
+
+<!-- Order Placed Confirmation -->
+<div class="cm-success" *ngIf="orderPlaced">
+  <div class="cm-success__icon">✅</div>
+  <h2>Order Placed!</h2>
+  <p class="cm-success__num">{{ orderNumber }}</p>
+  <p>Your order is being prepared. Sit back and relax!</p>
+  <button class="cm-btn-primary" (click)="orderPlaced = false">Order More</button>
+</div>
+
+<!-- Main App -->
+<div class="cm-app" *ngIf="!loading && !tableError && !orderPlaced">
+
+  <!-- Header -->
+  <div class="cm-header">
+    <div class="cm-header__info">
+      <div class="cm-table-badge">{{ table?.tableNumber }}</div>
+      <div>
+        <h1 class="cm-header__title">Our Menu</h1>
+        <span class="cm-header__sub">Table {{ table?.tableNumber }}</span>
+      </div>
+    </div>
+    <button class="cm-cart-btn" (click)="activeView = 'cart'" *ngIf="cartCount > 0">
+      <span class="cm-cart-icon">🛒</span>
+      <span class="cm-cart-badge">{{ cartCount }}</span>
+    </button>
+  </div>
+
+  <!-- MENU VIEW -->
+  <div class="cm-menu-view" *ngIf="activeView === 'menu'">
+
+    <!-- Search -->
+    <div class="cm-search-wrap">
+      <span class="cm-search-icon">🔍</span>
+      <input class="cm-search" type="text" [(ngModel)]="searchQuery" placeholder="Search dishes…" />
+    </div>
+
+    <!-- Categories -->
+    <div class="cm-categories">
+      <button
+        *ngFor="let cat of categories"
+        class="cm-cat-btn"
+        [class.cm-cat-btn--active]="selectedCategory === cat"
+        (click)="selectedCategory = cat">
+        {{ cat }}
+      </button>
+    </div>
+
+    <!-- Items Grid -->
+    <div class="cm-items-grid">
+      <div *ngIf="filteredItems.length === 0" class="cm-empty">
+        <span>🍽️</span><p>No items found</p>
+      </div>
+
+      <div *ngFor="let item of filteredItems" class="cm-item-card">
+        <div class="cm-item-img" [style.backgroundImage]="item.imageUrl ? 'url(' + item.imageUrl + ')' : 'none'">
+          <span *ngIf="!item.imageUrl" class="cm-item-img-placeholder">🍴</span>
+        </div>
+        <div class="cm-item-body">
+          <div class="cm-item-name">{{ item.name }}</div>
+          <div class="cm-item-desc" *ngIf="item.description">{{ item.description }}</div>
+          <div class="cm-item-footer">
+            <span class="cm-item-price">Rs. {{ item.price | number:'1.2-2' }}</span>
+            <div class="cm-qty-controls" *ngIf="getCartQty(item) > 0; else addBtn">
+              <button class="cm-qty-btn" (click)="removeFromCart(item)">−</button>
+              <span class="cm-qty-val">{{ getCartQty(item) }}</span>
+              <button class="cm-qty-btn cm-qty-btn--add" (click)="addToCart(item)">+</button>
+            </div>
+            <ng-template #addBtn>
+              <button class="cm-add-btn" (click)="addToCart(item)">+ Add</button>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CART VIEW -->
+  <div class="cm-cart-view" *ngIf="activeView === 'cart'">
+    <div class="cm-cart-header">
+      <button class="cm-back-btn" (click)="activeView = 'menu'">← Back</button>
+      <h2>Your Order</h2>
+      <button class="cm-clear-btn" *ngIf="cart.length > 0" (click)="clearCart()">Clear</button>
+    </div>
+
+    <div class="cm-cart-empty" *ngIf="cart.length === 0">
+      <span>🛒</span>
+      <p>Your cart is empty</p>
+      <button class="cm-btn-primary" (click)="activeView = 'menu'">Browse Menu</button>
+    </div>
+
+    <div class="cm-cart-items" *ngIf="cart.length > 0">
+      <div *ngFor="let c of cart" class="cm-cart-item">
+        <div class="cm-cart-item__info">
+          <span class="cm-cart-item__name">{{ c.menuItem.name }}</span>
+          <span class="cm-cart-item__price">Rs. {{ (c.menuItem.price * c.quantity) | number:'1.2-2' }}</span>
+        </div>
+        <div class="cm-qty-controls">
+          <button class="cm-qty-btn" (click)="removeFromCart(c.menuItem)">−</button>
+          <span class="cm-qty-val">{{ c.quantity }}</span>
+          <button class="cm-qty-btn cm-qty-btn--add" (click)="addToCart(c.menuItem)">+</button>
+        </div>
+        <textarea class="cm-notes" [(ngModel)]="c.notes" placeholder="Special notes…" rows="1"></textarea>
+      </div>
+    </div>
+
+    <div class="cm-cart-footer" *ngIf="cart.length > 0">
+      <div class="cm-customer-name">
+        <input class="cm-input" type="text" [(ngModel)]="customerName" placeholder="Your name (optional)" />
+      </div>
+      <div class="cm-total-row">
+        <span>Total</span>
+        <strong>Rs. {{ cartTotal | number:'1.2-2' }}</strong>
+      </div>
+      <button class="cm-confirm-btn" [disabled]="placing" (click)="placeOrder()">
+        <span *ngIf="!placing">✅ Place Order</span>
+        <span *ngIf="placing">Sending…</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom Cart Bar (shown on menu view when cart has items) -->
+  <div class="cm-bottom-bar" *ngIf="activeView === 'menu' && cartCount > 0" (click)="activeView = 'cart'">
+    <span>{{ cartCount }} item{{ cartCount !== 1 ? 's' : '' }} in cart</span>
+    <span class="cm-bottom-bar__total">Rs. {{ cartTotal | number:'1.2-2' }} →</span>
+  </div>
+
+</div>
