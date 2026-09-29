@@ -1,0 +1,267 @@
+<p-toast />
+<p-confirmDialog />
+
+<div class="rj-page">
+
+  <!-- ── Header ── -->
+  <div class="rj-header">
+    <div class="rj-header__left">
+      <h1 class="rj-header__title"><i class="pi pi-table"></i> Table Management</h1>
+      <p class="rj-header__subtitle">Manage dining tables, QR codes, and table status</p>
+    </div>
+    <div class="rj-header__right">
+      <button class="btn-primary" (click)="openCreateDialog()">
+        <i class="pi pi-plus"></i> Add Table
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Stats Row ── -->
+  <div class="rm-stats">
+    <div class="stat-card" (click)="filterStatus = ''; applyFilter()">
+      <div class="stat-card__dot" style="background:#2563eb"></div>
+      <div class="stat-card__body">
+        <span class="stat-card__label">All Tables</span>
+        <span class="stat-card__value">{{ tables.length }}</span>
+        <span class="stat-card__sub">Total active tables</span>
+      </div>
+    </div>
+    <div class="stat-card" (click)="filterStatus = 'AVAILABLE'; applyFilter()">
+      <div class="stat-card__dot" style="background:#16a34a"></div>
+      <div class="stat-card__body">
+        <span class="stat-card__label">Available</span>
+        <span class="stat-card__value">{{ availableCount }}</span>
+        <span class="stat-card__sub">Ready for guests</span>
+      </div>
+    </div>
+    <div class="stat-card" (click)="filterStatus = 'OCCUPIED'; applyFilter()">
+      <div class="stat-card__dot" style="background:#dc2626"></div>
+      <div class="stat-card__body">
+        <span class="stat-card__label">Occupied</span>
+        <span class="stat-card__value">{{ occupiedCount }}</span>
+        <span class="stat-card__sub">Currently in use</span>
+      </div>
+    </div>
+    <div class="stat-card" (click)="filterStatus = 'NEEDS_CLEANING'; applyFilter()">
+      <div class="stat-card__dot" style="background:#d97706"></div>
+      <div class="stat-card__body">
+        <span class="stat-card__label">Needs Cleaning</span>
+        <span class="stat-card__value">{{ needsCleanCount }}</span>
+        <span class="stat-card__sub">Awaiting staff</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Card Container ── -->
+  <div class="rj-table-card">
+
+    <!-- Toolbar -->
+    <div class="rj-toolbar">
+      <div class="rj-toolbar__left">
+        <div class="rj-toolbar__search">
+          <i class="pi pi-search"></i>
+          <input type="text" [(ngModel)]="searchQuery" (ngModelChange)="applyFilter()"
+                 placeholder="Search table or section..." id="tbl-search" />
+        </div>
+        <!-- Status filter pills -->
+        <div class="rm-cat-pills">
+          <button class="cat-pill" [class.active]="filterStatus === ''"
+                  (click)="filterStatus = ''; applyFilter()">
+            All <span class="pill-count">{{ tables.length }}</span>
+          </button>
+          <button *ngFor="let opt of statusOptions.slice(1)" class="cat-pill"
+                  [class.active]="filterStatus === opt.value"
+                  (click)="filterStatus = opt.value; applyFilter()">
+            {{ opt.label }} <span class="pill-count">{{ countByStatus(opt.value) }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="rj-toolbar__right">
+        <select class="section-select" [(ngModel)]="filterSection" (change)="applyFilter()" id="section-filter">
+          <option value="">All Sections</option>
+          <option *ngFor="let s of sections" [value]="s">{{ s }}</option>
+        </select>
+        <span class="rj-table-footer__info">{{ filteredTables.length }} table(s)</span>
+      </div>
+    </div>
+
+    <!-- Card Grid -->
+    <div class="tbl-grid-wrap">
+
+      <!-- Loading -->
+      <div class="empty-state" *ngIf="loading">
+        <i class="pi pi-spin pi-spinner" style="font-size:2rem; color:#94a3b8"></i>
+        <p>Loading tables...</p>
+      </div>
+
+      <!-- Empty -->
+      <div class="empty-state" *ngIf="!loading && filteredTables.length === 0">
+        <i class="pi pi-table" style="font-size:2.5rem; color:#cbd5e1"></i>
+        <p>No tables found. Click <strong>Add Table</strong> to get started.</p>
+      </div>
+
+      <!-- Cards -->
+      <div class="tbl-grid" *ngIf="!loading && filteredTables.length > 0">
+        <div class="tbl-card" *ngFor="let t of filteredTables" [class]="'tbl-card--' + t.status.toLowerCase()">
+
+          <!-- Top status accent bar -->
+          <div class="tbl-card__bar"></div>
+
+          <div class="tbl-card__body">
+
+            <!-- Number & section -->
+            <div class="tbl-card__top">
+              <span class="tbl-card__number">{{ t.tableNumber }}</span>
+              <span class="status-pill"
+                    [style.background]="getStatusStyle(t.status).bg"
+                    [style.color]="getStatusStyle(t.status).color"
+                    [style.border-color]="getStatusStyle(t.status).border">
+                <i [class]="getStatusStyle(t.status).icon"></i>
+                {{ getStatusLabel(t.status) }}
+              </span>
+            </div>
+
+            <!-- Meta info -->
+            <div class="tbl-card__meta">
+              <span class="meta-chip">
+                <i class="pi pi-users"></i> {{ t.capacity }} seats
+              </span>
+              <span *ngIf="t.section" class="meta-chip meta-chip--section">
+                <i class="pi pi-map-marker"></i> {{ t.section }}
+              </span>
+            </div>
+
+            <!-- QR token hint -->
+            <div class="tbl-card__token">
+              <i class="pi pi-qrcode"></i>
+              <code>{{ t.qrToken.substring(0, 16) }}…</code>
+            </div>
+
+            <!-- Divider -->
+            <div class="tbl-card__divider"></div>
+
+            <!-- Actions -->
+            <div class="tbl-card__actions">
+              <button class="action-btn action-btn--qr" title="View / Download QR"
+                      pTooltip="View QR Code" (click)="openQrDialog(t)">
+                <i class="pi pi-qrcode"></i>
+              </button>
+              <button class="action-btn action-btn--edit" title="Edit"
+                      pTooltip="Edit Table" (click)="openEditDialog(t)">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="action-btn action-btn--refresh" title="Regenerate QR"
+                      pTooltip="Regenerate QR" (click)="regenerateQr(t)">
+                <i class="pi pi-refresh"></i>
+              </button>
+              <button *ngIf="t.status === 'NEEDS_CLEANING'"
+                      class="action-btn action-btn--check" title="Mark Available"
+                      pTooltip="Mark as Available" (click)="markAvailable(t)">
+                <i class="pi pi-check-circle"></i>
+              </button>
+              <button class="action-btn action-btn--delete" title="Deactivate"
+                      pTooltip="Deactivate Table" (click)="deactivateTable(t)">
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ─── Create / Edit Dialog ─── -->
+<p-dialog [(visible)]="dialogVisible" [showHeader]="false"
+          [modal]="true" [style]="{ width: '480px', borderRadius: '14px', overflow: 'hidden' }"
+          [draggable]="false" styleClass="create-job-dialog">
+
+  <ng-template pTemplate="content">
+    <div class="cj-header">
+      <div class="cj-header__left">
+        <div class="cj-header__icon"><i class="pi pi-table"></i></div>
+        <div>
+          <h2 class="cj-header__title">{{ dialogTitle }}</h2>
+          <p class="cj-header__subtitle">{{ editingTable ? 'Update table details' : 'Fill in the details to add a new table' }}</p>
+        </div>
+      </div>
+      <button class="cj-header__close" (click)="dialogVisible = false">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    <div class="cj-body">
+      <div class="cj-field">
+        <label>Table Number <span class="req">*</span></label>
+        <input type="text" class="cj-input" [(ngModel)]="form.tableNumber"
+               placeholder="e.g. T-01, T-12" maxlength="20" id="tbl-number" />
+      </div>
+      <div class="cj-field-row">
+        <div class="cj-field">
+          <label>Capacity (seats) <span class="req">*</span></label>
+          <input type="number" class="cj-input" [(ngModel)]="form.capacity"
+                 min="1" max="50" id="tbl-capacity" />
+        </div>
+        <div class="cj-field">
+          <label>Section <span style="color:#94a3b8; font-weight:400; font-size:0.8rem">(optional)</span></label>
+          <input type="text" class="cj-input" [(ngModel)]="form.section"
+                 placeholder="e.g. Patio, Main Hall" id="tbl-section" />
+        </div>
+      </div>
+    </div>
+
+    <div class="cj-footer">
+      <button class="cj-btn-cancel" (click)="dialogVisible = false" [disabled]="saving">Cancel</button>
+      <button class="cj-btn-create" (click)="saveTable()" [disabled]="saving">
+        <i class="pi" [ngClass]="saving ? 'pi-spin pi-spinner' : 'pi-save'"></i>
+        {{ saving ? 'Saving...' : (editingTable ? 'Update Table' : 'Create Table') }}
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- ─── QR Code Dialog ─── -->
+<p-dialog [(visible)]="qrDialogVisible" [showHeader]="false"
+          [modal]="true" [style]="{ width: '400px', borderRadius: '14px', overflow: 'hidden' }"
+          [draggable]="false" styleClass="create-job-dialog">
+
+  <ng-template pTemplate="content">
+    <div class="cj-header" *ngIf="qrTable">
+      <div class="cj-header__left">
+        <div class="cj-header__icon"><i class="pi pi-qrcode"></i></div>
+        <div>
+          <h2 class="cj-header__title">QR Code — {{ qrTable.tableNumber }}</h2>
+          <p class="cj-header__subtitle">Scan to open the self-order menu</p>
+        </div>
+      </div>
+      <button class="cj-header__close" (click)="qrDialogVisible = false">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    <div class="cj-body qr-body" *ngIf="qrTable">
+      <div class="qr-wrapper">
+        <img [src]="qrTable.qrImageBase64" [alt]="'QR for ' + qrTable.tableNumber" class="qr-img" />
+      </div>
+      <p class="qr-hint">
+        Customers scan this code to place orders at <strong>{{ qrTable.tableNumber }}</strong>.
+      </p>
+      <div class="qr-token-row">
+        <span class="qr-token-label">Token</span>
+        <code class="qr-token-code">{{ qrTable.qrToken }}</code>
+      </div>
+    </div>
+
+    <div class="cj-footer" *ngIf="qrTable">
+      <button class="cj-btn-cancel" (click)="regenerateQr(qrTable!)">
+        <i class="pi pi-refresh"></i> Regenerate
+      </button>
+      <button class="cj-btn-create" (click)="downloadQr()">
+        <i class="pi pi-download"></i> Download PNG
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>

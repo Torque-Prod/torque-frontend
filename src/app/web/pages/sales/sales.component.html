@@ -1,4 +1,5 @@
 <p-toast />
+<p-confirmDialog />
 
 <div class="sales-page">
   <!-- Page Header & Tabs -->
@@ -7,13 +8,16 @@
       <h1 class="sales-header__title">
         <i class="pi pi-shopping-cart"></i> POS & Sales Register
       </h1>
-      <p class="sales-header__subtitle">Sell spare parts, manage invoices & track direct sales</p>
+      <p class="sales-header__subtitle">Sell items, manage tables & track sales</p>
     </div>
 
     <!-- Navigation Tabs -->
     <div class="sales-tabs">
       <button class="sales-tab" [class.is-active]="activeTab === 'pos'" (click)="switchTab('pos')">
         <i class="pi pi-desktop"></i> POS Register
+      </button>
+      <button *ngIf="businessType === 'RESTAURANT'" class="sales-tab" [class.is-active]="activeTab === 'tables'" (click)="switchTab('tables')">
+        <i class="pi pi-table"></i> Tables & Live Orders
       </button>
       <button class="sales-tab" [class.is-active]="activeTab === 'history'" (click)="switchTab('history')">
         <i class="pi pi-history"></i> Sales History
@@ -71,26 +75,25 @@
           <div
             *ngFor="let item of filteredRestaurantItems"
             class="part-card"
-            (click)="addRestaurantItemToCart(item)">
+            (click)="addMenuItemToCart(item)">
 
-            <!-- Image — same structure as parts -->
+            <!-- Image -->
             <div class="part-card__img">
               <img *ngIf="item.imageBase64" [src]="item.imageBase64" alt="{{ item.name }}" />
               <div *ngIf="!item.imageBase64" class="part-card__img-fallback">
                 <i class="pi pi-bowl-hot"></i>
               </div>
-              <!-- Category badge where stock badge sits -->
-              <span class="part-stock-badge" *ngIf="item.categoryName">
-                {{ item.categoryName }}
+              <span class="part-stock-badge" *ngIf="item.category">
+                {{ item.category }}
               </span>
             </div>
 
-            <!-- Info — same structure as parts -->
+            <!-- Info -->
             <div class="part-card__info">
               <h4 class="part-card__name" [title]="item.name">{{ item.name }}</h4>
               <div class="part-card__bottom">
                 <span class="part-card__price">LKR {{ item.price | number:'1.2-2' }}</span>
-                <button class="add-cart-btn" (click)="$event.stopPropagation(); addRestaurantItemToCart(item)">
+                <button class="add-cart-btn" (click)="$event.stopPropagation(); addMenuItemToCart(item)">
                   <i class="pi pi-plus"></i>
                 </button>
               </div>
@@ -140,7 +143,7 @@
       </div>
 
       <!-- Catalog Paginator Footer -->
-      <div class="catalog-paginator-wrap" *ngIf="catalogTotalRecords > 0">
+      <div class="catalog-paginator-wrap" *ngIf="catalogTotalRecords > 0 && businessType === 'REPAIR_CENTER'">
         <span class="catalog-info">Showing {{ catalogParts.length }} of {{ catalogTotalRecords }} parts</span>
         <p-paginator
           [first]="catalogFirst"
@@ -158,7 +161,7 @@
       <div class="cart-header">
         <div class="cart-title">
           <i class="pi pi-shopping-bag"></i>
-          <h3>Current Sale</h3>
+          <h3>Current Cart</h3>
           <span class="cart-count">{{ cart.length }} items</span>
         </div>
         <button class="clear-cart-btn" *ngIf="cart.length > 0" (click)="clearCart()">
@@ -204,19 +207,19 @@
         <div *ngIf="cart.length === 0" class="cart-empty-state">
           <div class="empty-icon"><i class="pi pi-shopping-cart"></i></div>
           <p>Cart is empty</p>
-          <span>Select spare parts from the catalog on the left to start billing</span>
+          <span>Select items from catalog on the left to start billing</span>
         </div>
 
         <div *ngFor="let item of cart" class="cart-item-row">
           <div class="cart-item-details">
-            <h5 class="cart-item-name">{{ item.part.name }}</h5>
+            <h5 class="cart-item-name">{{ item.itemName || item.part.name }}</h5>
             <span class="cart-item-unit-price">Rs. {{ item.unitPrice | number:'1.2-2' }} each</span>
           </div>
 
           <div class="cart-item-controls">
             <button class="qty-btn" (click)="decrementQuantity(item)"><i class="pi pi-minus"></i></button>
-            <input type="number" class="qty-input" [ngModel]="item.quantity" (ngModelChange)="updateItemQuantity(item, $event)" min="1" [max]="item.part.stockQuantity" />
-            <button class="qty-btn" (click)="incrementQuantity(item)" [disabled]="item.quantity >= item.part.stockQuantity"><i class="pi pi-plus"></i></button>
+            <input type="number" class="qty-input" [ngModel]="item.quantity" (ngModelChange)="updateItemQuantity(item, $event)" min="1" />
+            <button class="qty-btn" (click)="incrementQuantity(item)"><i class="pi pi-plus"></i></button>
           </div>
 
           <div class="cart-item-total">
@@ -277,13 +280,154 @@
           <span>{{ checkingOut ? 'Processing Sale...' : 'Complete Sale & Print Bill' }}</span>
           <span class="btn-price" *ngIf="!checkingOut">Rs. {{ netTotal | number:'1.2-2' }}</span>
         </button>
+
+        <!-- Send Cart to Open Table Session (If Table Selected) -->
+        <button
+          *ngIf="businessType === 'RESTAURANT' && selectedTableForOrders && cart.length > 0"
+          class="send-table-btn mt-2"
+          (click)="sendCartItemsToTableOrder()">
+          <i class="pi pi-send"></i> Send Cart to Table {{ selectedTableForOrders.tableNumber }} Order
+        </button>
       </div>
 
     </div>
   </div>
 
   <!-- ========================================== -->
-  <!-- TAB 2: SALES HISTORY & INVOICES VIEW       -->
+  <!-- TAB 2: TABLES & LIVE SESSIONS VIEW        -->
+  <!-- ========================================== -->
+  <div class="tables-tab-container" *ngIf="activeTab === 'tables'">
+    
+    <!-- Stats Row -->
+    <div class="rm-stats">
+      <div class="stat-card" (click)="filterTableStatus = ''; applyTableFilter()">
+        <div class="stat-card__dot" style="background:#2563eb"></div>
+        <div class="stat-card__body">
+          <span class="stat-card__label">All Tables</span>
+          <span class="stat-card__value">{{ tables.length }}</span>
+          <span class="stat-card__sub">Total active tables</span>
+        </div>
+      </div>
+      <div class="stat-card" (click)="filterTableStatus = 'AVAILABLE'; applyTableFilter()">
+        <div class="stat-card__dot" style="background:#16a34a"></div>
+        <div class="stat-card__body">
+          <span class="stat-card__label">Available</span>
+          <span class="stat-card__value">{{ countTablesByStatus('AVAILABLE') }}</span>
+          <span class="stat-card__sub">Ready for guests</span>
+        </div>
+      </div>
+      <div class="stat-card" (click)="filterTableStatus = 'OCCUPIED'; applyTableFilter()">
+        <div class="stat-card__dot" style="background:#dc2626"></div>
+        <div class="stat-card__body">
+          <span class="stat-card__label">Occupied</span>
+          <span class="stat-card__value">{{ countTablesByStatus('OCCUPIED') }}</span>
+          <span class="stat-card__sub">Session in progress</span>
+        </div>
+      </div>
+      <div class="stat-card" (click)="filterTableStatus = 'NEEDS_CLEANING'; applyTableFilter()">
+        <div class="stat-card__dot" style="background:#d97706"></div>
+        <div class="stat-card__body">
+          <span class="stat-card__label">Needs Cleaning</span>
+          <span class="stat-card__value">{{ countTablesByStatus('NEEDS_CLEANING') }}</span>
+          <span class="stat-card__sub">Awaiting staff</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="rj-toolbar">
+      <div class="rj-toolbar__left">
+        <div class="rj-toolbar__search">
+          <i class="pi pi-search"></i>
+          <input type="text" [(ngModel)]="tableSearchQuery" (ngModelChange)="applyTableFilter()"
+                 placeholder="Search table or section..." id="pos-tbl-search" />
+        </div>
+        <div class="rm-cat-pills">
+          <button class="cat-pill" [class.active]="filterTableStatus === ''"
+                  (click)="filterTableStatus = ''; applyTableFilter()">
+            All <span class="pill-count">{{ tables.length }}</span>
+          </button>
+          <button class="cat-pill" [class.active]="filterTableStatus === 'AVAILABLE'"
+                  (click)="filterTableStatus = 'AVAILABLE'; applyTableFilter()">
+            Available <span class="pill-count">{{ countTablesByStatus('AVAILABLE') }}</span>
+          </button>
+          <button class="cat-pill" [class.active]="filterTableStatus === 'OCCUPIED'"
+                  (click)="filterTableStatus = 'OCCUPIED'; applyTableFilter()">
+            Occupied <span class="pill-count">{{ countTablesByStatus('OCCUPIED') }}</span>
+          </button>
+          <button class="cat-pill" [class.active]="filterTableStatus === 'NEEDS_CLEANING'"
+                  (click)="filterTableStatus = 'NEEDS_CLEANING'; applyTableFilter()">
+            Needs Cleaning <span class="pill-count">{{ countTablesByStatus('NEEDS_CLEANING') }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="rj-toolbar__right">
+        <select class="section-select" [(ngModel)]="filterTableSection" (change)="applyTableFilter()" id="pos-table-section">
+          <option value="">All Sections</option>
+          <option *ngFor="let s of tableSections" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Table Cards Grid -->
+    <div class="tbl-grid-wrap">
+      <div class="empty-state" *ngIf="loadingTables">
+        <i class="pi pi-spin pi-spinner" style="font-size:2rem; color:#94a3b8"></i>
+        <p>Loading dining tables...</p>
+      </div>
+
+      <div class="empty-state" *ngIf="!loadingTables && filteredTables.length === 0">
+        <i class="pi pi-table" style="font-size:2.5rem; color:#cbd5e1"></i>
+        <p>No tables match your filter criteria.</p>
+      </div>
+
+      <div class="tbl-grid" *ngIf="!loadingTables && filteredTables.length > 0">
+        <div class="tbl-card" *ngFor="let t of filteredTables" [class]="'tbl-card--' + t.status.toLowerCase()">
+          <div class="tbl-card__bar"></div>
+          <div class="tbl-card__body">
+            <div class="tbl-card__top">
+              <span class="tbl-card__number">{{ t.tableNumber }}</span>
+              <span class="status-pill"
+                    [style.background]="getTableStatusStyle(t.status).bg"
+                    [style.color]="getTableStatusStyle(t.status).color"
+                    [style.border-color]="getTableStatusStyle(t.status).border">
+                <i [class]="getTableStatusStyle(t.status).icon"></i>
+                {{ getTableStatusLabel(t.status) }}
+              </span>
+            </div>
+
+            <div class="tbl-card__meta">
+              <span *ngIf="t.section" class="tbl-card__section"><i class="pi pi-map-marker"></i> {{ t.section }}</span>
+              <span class="tbl-card__capacity"><i class="pi pi-users"></i> {{ t.capacity }} seats</span>
+            </div>
+
+            <!-- Card Actions -->
+            <div class="tbl-card__actions">
+              <button *ngIf="t.status === 'AVAILABLE'" class="tbl-btn tbl-btn--primary" (click)="openTableOrdersModal(t)">
+                <i class="pi pi-plus"></i> Open Session & Order
+              </button>
+              
+              <div *ngIf="t.status === 'OCCUPIED'" class="tbl-btn-group">
+                <button class="tbl-btn tbl-btn--primary" (click)="openTableOrdersModal(t)">
+                  <i class="pi pi-list"></i> Orders
+                </button>
+                <button class="tbl-btn tbl-btn--success" (click)="openTableCheckoutModal(t)">
+                  <i class="pi pi-check-circle"></i> Checkout
+                </button>
+              </div>
+
+              <button *ngIf="t.status === 'NEEDS_CLEANING'" class="tbl-btn tbl-btn--secondary" (click)="markTableAvailable(t)">
+                <i class="pi pi-sync"></i> Mark Clean & Ready
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 3: SALES HISTORY & INVOICES VIEW       -->
   <!-- ========================================== -->
   <div class="sales-history-view" *ngIf="activeTab === 'history'">
     
@@ -299,7 +443,7 @@
       <div class="h-stat-card">
         <div class="h-stat-icon" style="background:#16a34a"><i class="pi pi-dollar"></i></div>
         <div>
-          <span class="h-stat-label">Total Direct Sales Revenue</span>
+          <span class="h-stat-label">Total Revenue</span>
           <h3 class="h-stat-val">Rs. {{ historyTotalRevenue | number:'1.2-2' }}</h3>
         </div>
       </div>
@@ -445,6 +589,346 @@
   </div>
 
 </div>
+
+<!-- ======================================================== -->
+<!-- MODAL 1: TABLE ORDERS & LIVE SESSION  (Two-Column Layout) -->
+<!-- ======================================================== -->
+<p-dialog
+  [(visible)]="orderModalVisible"
+  [modal]="true"
+  [showHeader]="false"
+  [style]="{ width: '900px', padding: '0' }"
+  [contentStyle]="{ padding: '0', height: '82vh', overflow: 'hidden', 'border-radius': '16px' }"
+  [draggable]="false"
+  styleClass="session-orders-dialog">
+
+  <div class="som-shell" *ngIf="selectedTableForOrders">
+
+    <!-- ── Custom Header ── -->
+    <div class="som-header">
+      <div class="som-header__left">
+        <div class="som-table-badge">{{ selectedTableForOrders.tableNumber }}</div>
+        <div>
+          <h2 class="som-header__title">Table {{ selectedTableForOrders.tableNumber }}</h2>
+          <span class="som-header__sub" *ngIf="activeSessionForTable">
+            Opened {{ activeSessionForTable.openedAt | date:'shortTime' }}
+          </span>
+        </div>
+      </div>
+      <button class="som-close-btn" (click)="orderModalVisible = false">
+        <i class="pi pi-times"></i> Close
+      </button>
+    </div>
+
+    <!-- ── Two-Column Body ── -->
+    <div class="som-body">
+
+      <!-- LEFT: Orders List -->
+      <div class="som-orders-panel">
+
+        <!-- Add Items Builder -->
+        <div class="som-builder" *ngIf="showAddItemSection">
+          <div class="som-builder__title">
+            <i class="pi pi-cart-plus"></i>
+            Add items for Table {{ selectedTableForOrders.tableNumber }}
+          </div>
+          <div class="som-builder__cols">
+            <!-- Food picker -->
+            <div class="food-selector-box">
+              <div class="search-input-wrap">
+                <i class="pi pi-search"></i>
+                <input type="text" [(ngModel)]="tableOrderSearchQuery"
+                       (ngModelChange)="onTableMenuSearch()"
+                       placeholder="Search food items..."
+                       class="form-control-sm" />
+              </div>
+              <div class="food-items-mini-list">
+                <div *ngFor="let item of filteredTableMenu" class="food-mini-card" (click)="addFoodToDraft(item)">
+                  <div class="food-mini-info">
+                    <strong>{{ item.name }}</strong>
+                    <span>Rs. {{ item.price | number:'1.2-2' }}</span>
+                  </div>
+                  <button class="add-mini-btn"><i class="pi pi-plus"></i></button>
+                </div>
+              </div>
+            </div>
+            <!-- Draft -->
+            <div class="draft-round-box">
+              <div class="som-builder__draft-header">
+                <strong>Selected ({{ tableOrderDraftItems.length }})</strong>
+                <span class="som-draft-total">Rs. {{ getDraftTotal() | number:'1.2-2' }}</span>
+              </div>
+              <div *ngIf="tableOrderDraftItems.length === 0" class="empty-draft">
+                <i class="pi pi-hand-pointer"></i>
+                <p>Tap items to add</p>
+              </div>
+              <div class="draft-items-list" *ngIf="tableOrderDraftItems.length > 0">
+                <div *ngFor="let draft of tableOrderDraftItems" class="draft-item-row">
+                  <div class="draft-item-info">
+                    <span class="draft-name">{{ draft.menuItem.name }}</span>
+                    <span class="draft-price">Rs. {{ (draft.menuItem.price * draft.quantity) | number:'1.2-2' }}</span>
+                  </div>
+                  <div class="draft-qty-controls">
+                    <button class="mini-qty-btn" (click)="decrementDraftQty(draft)"><i class="pi pi-minus"></i></button>
+                    <span class="draft-qty-val">{{ draft.quantity }}</span>
+                    <button class="mini-qty-btn" (click)="incrementDraftQty(draft)"><i class="pi pi-plus"></i></button>
+                    <button class="remove-draft-btn" (click)="removeDraftItem(draft)"><i class="pi pi-times"></i></button>
+                  </div>
+                </div>
+              </div>
+              <button class="submit-round-btn"
+                      [disabled]="tableOrderDraftItems.length === 0 || submittingOrderRound"
+                      (click)="submitNewOrderRound()">
+                <i class="pi" [ngClass]="submittingOrderRound ? 'pi-spin pi-spinner' : 'pi-send'"></i>
+                {{ submittingOrderRound ? 'Sending...' : 'Send to Kitchen' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div *ngIf="loadingSessionOrders" class="som-loading">
+          <i class="pi pi-spin pi-spinner"></i> Loading orders...
+        </div>
+
+        <!-- Empty -->
+        <div *ngIf="!loadingSessionOrders && ordersForActiveSession.length === 0" class="som-empty-orders">
+          <i class="pi pi-shopping-bag"></i>
+          <p>No orders yet for this session.</p>
+        </div>
+
+        <!-- Order Round Cards -->
+        <div *ngFor="let order of ordersForActiveSession" class="som-order-card">
+          <!-- Card Header -->
+          <div class="som-order-card__header">
+            <div class="som-order-card__title">
+              <span class="som-order-num">{{ order.orderNumber }}</span>
+              <span class="som-source-pill" [class.som-source-pill--qr]="order.source === 'CUSTOMER_QR'">
+                {{ order.source === 'CUSTOMER_QR' ? 'QR Self-Order' : 'by Waiter' }}
+              </span>
+            </div>
+            <span class="som-order-status" [class]="'som-status--' + order.status.toLowerCase()">
+              {{ order.status | titlecase }}
+            </span>
+          </div>
+
+          <!-- Item Rows -->
+          <div *ngFor="let item of order.items" class="som-item-row">
+            <div class="som-item-row__info">
+              <span class="som-item-name">{{ item.quantity }} × {{ item.itemName }}</span>
+              <span class="som-item-price">
+                Rs. {{ item.lineTotal / item.quantity | number:'1.2-2' }} each &nbsp;·&nbsp;
+                Rs. {{ item.lineTotal | number:'1.2-2' }}
+              </span>
+            </div>
+            <div class="som-item-row__actions">
+              <span class="som-item-status-pill" [class]="'som-ipill--' + item.status.toLowerCase()">
+                {{ item.status | titlecase }}
+              </span>
+              <button *ngIf="item.status === 'PENDING'" class="som-action-btn som-action-btn--prep"
+                      (click)="updateItemStatus(item, 'PREPARING')">
+                Start prep
+              </button>
+              <button *ngIf="item.status === 'PREPARING'" class="som-action-btn som-action-btn--ready"
+                      (click)="updateItemStatus(item, 'READY')">
+                Mark ready
+              </button>
+              <button *ngIf="item.status === 'READY'" class="som-action-btn som-action-btn--serve"
+                      (click)="updateItemStatus(item, 'SERVED')">
+                Serve
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /som-orders-panel -->
+
+      <!-- RIGHT: Session Summary Panel -->
+      <div class="som-summary-panel" *ngIf="activeSessionForTable">
+
+        <div class="som-summary-stats">
+          <div class="som-stat-row">
+            <span class="som-stat-label">Rounds</span>
+            <span class="som-stat-value">{{ ordersForActiveSession.length }}</span>
+          </div>
+          <div class="som-stat-row">
+            <span class="som-stat-label">Items served</span>
+            <span class="som-stat-value">
+              {{ getServedCount() }} of {{ getTotalItemCount() }}
+            </span>
+          </div>
+        </div>
+
+        <div class="som-running-total">
+          <span class="som-running-total__label">Running total</span>
+          <span class="som-running-total__amount">
+            Rs. {{ activeSessionForTable.runningTotal | number:'1.2-2' }}
+          </span>
+        </div>
+
+        <div class="som-not-served" *ngIf="getPendingCount() > 0">
+          <i class="pi pi-clock"></i>
+          {{ getPendingCount() }} item(s) not served yet
+        </div>
+
+        <div class="som-summary-actions">
+          <button class="som-btn-add-items" (click)="toggleAddItemsSection()">
+            <i class="pi" [ngClass]="showAddItemSection ? 'pi-times' : 'pi-plus'"></i>
+            {{ showAddItemSection ? 'Close Menu' : 'Add items' }}
+          </button>
+          <button class="som-btn-checkout"
+                  *ngIf="activeSessionForTable.runningTotal > 0"
+                  (click)="openTableCheckoutModal(selectedTableForOrders!)">
+            <i class="pi pi-check-circle"></i>
+            Proceed to checkout
+          </button>
+        </div>
+
+      </div><!-- /som-summary-panel -->
+
+    </div><!-- /som-body -->
+  </div><!-- /som-shell -->
+
+</p-dialog>
+
+<!-- ======================================================== -->
+<!-- MODAL 2: CASHIER TABLE CHECKOUT DIALOG — POS Style       -->
+<!-- ======================================================== -->
+<p-dialog
+  [(visible)]="checkoutModalVisible"
+  [modal]="true"
+  [showHeader]="false"
+  [style]="{ width: '820px', padding: '0' }"
+  [contentStyle]="{ padding: '0', overflow: 'hidden', 'border-radius': '16px' }"
+  [draggable]="false"
+  styleClass="table-checkout-dialog">
+
+  <div class="co-shell" *ngIf="activeSessionForTable">
+
+    <!-- ── Header ── -->
+    <div class="co-header">
+      <div class="co-header__left">
+        <div class="co-table-badge">{{ selectedTableForOrders?.tableNumber }}</div>
+        <div>
+          <h2 class="co-header__title">Checkout</h2>
+          <span class="co-header__sub">{{ activeSessionForTable.orderCount }} rounds · {{ getTotalItemCount() }} items</span>
+        </div>
+      </div>
+      <button class="co-close-btn" (click)="checkoutModalVisible = false">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    <!-- ── Two-column body ── -->
+    <div class="co-body">
+
+      <!-- LEFT: Bill Summary -->
+      <div class="co-bill-panel">
+        <div class="co-bill-panel__title">
+          <i class="pi pi-receipt"></i> Bill Summary
+        </div>
+
+        <!-- Totals -->
+        <div class="co-bill-rows">
+          <div class="co-bill-row">
+            <span>Subtotal</span>
+            <span>Rs. {{ activeSessionForTable.runningTotal | number:'1.2-2' }}</span>
+          </div>
+          <div class="co-bill-row co-bill-row--discount" *ngIf="checkoutDiscount > 0">
+            <span>Discount</span>
+            <span class="co-discount-val">− Rs. {{ checkoutDiscount | number:'1.2-2' }}</span>
+          </div>
+          <div class="co-bill-row co-bill-row--tax" *ngIf="checkoutTax > 0">
+            <span>Tax</span>
+            <span>+ Rs. {{ checkoutTax | number:'1.2-2' }}</span>
+          </div>
+          <div class="co-bill-divider"></div>
+          <div class="co-bill-row co-bill-row--total">
+            <span>Total</span>
+            <span class="co-total-amount">
+              Rs. {{ (activeSessionForTable.runningTotal - (checkoutDiscount || 0) + (checkoutTax || 0)) | number:'1.2-2' }}
+            </span>
+          </div>
+          <div class="co-bill-row co-bill-row--change" *ngIf="checkoutPaymentMethod === 'CASH' && checkoutPaidAmount > 0">
+            <span>Change Due</span>
+            <span class="co-change-val">
+              Rs. {{ (checkoutPaidAmount - (activeSessionForTable.runningTotal - (checkoutDiscount || 0) + (checkoutTax || 0))) | number:'1.2-2' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Adjustments -->
+        <div class="co-adjustments">
+          <div class="co-adj-row">
+            <label class="co-adj-label">Discount (Rs.)</label>
+            <input type="number" class="co-adj-input" [(ngModel)]="checkoutDiscount" min="0" placeholder="0.00" />
+          </div>
+          <div class="co-adj-row">
+            <label class="co-adj-label">Tax (Rs.)</label>
+            <input type="number" class="co-adj-input" [(ngModel)]="checkoutTax" min="0" placeholder="0.00" />
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Payment Form -->
+      <div class="co-payment-panel">
+
+        <!-- Customer -->
+        <div class="co-section-label">Customer</div>
+        <div class="co-form-group">
+          <input type="text" class="co-input" [(ngModel)]="checkoutCustomerName"
+                 placeholder="Customer name (optional)" />
+        </div>
+        <div class="co-form-group">
+          <input type="text" class="co-input" [(ngModel)]="checkoutCustomerPhone"
+                 placeholder="Phone number (optional)" />
+        </div>
+
+        <!-- Payment Method -->
+        <div class="co-section-label">Payment Method</div>
+        <div class="co-pm-grid">
+          <button class="co-pm-btn" [class.co-pm-btn--active]="checkoutPaymentMethod === 'CASH'"
+                  (click)="checkoutPaymentMethod = 'CASH'">
+            <i class="pi pi-money-bill"></i> Cash
+          </button>
+          <button class="co-pm-btn" [class.co-pm-btn--active]="checkoutPaymentMethod === 'CARD'"
+                  (click)="checkoutPaymentMethod = 'CARD'">
+            <i class="pi pi-credit-card"></i> Card
+          </button>
+          <button class="co-pm-btn" [class.co-pm-btn--active]="checkoutPaymentMethod === 'TRANSFER'"
+                  (click)="checkoutPaymentMethod = 'TRANSFER'">
+            <i class="pi pi-send"></i> Transfer
+          </button>
+          <button class="co-pm-btn" [class.co-pm-btn--active]="checkoutPaymentMethod === 'CREDIT'"
+                  (click)="checkoutPaymentMethod = 'CREDIT'">
+            <i class="pi pi-clock"></i> Credit
+          </button>
+        </div>
+
+        <!-- Cash tendered -->
+        <div class="co-form-group" *ngIf="checkoutPaymentMethod === 'CASH'">
+          <div class="co-section-label">Amount Tendered (Rs.)</div>
+          <input type="number" class="co-input co-input--large" [(ngModel)]="checkoutPaidAmount"
+                 placeholder="0.00" min="0" />
+        </div>
+
+        <!-- Confirm Button -->
+        <button class="co-confirm-btn" [disabled]="processingCheckout" (click)="confirmTableCheckout()">
+          <i class="pi" [ngClass]="processingCheckout ? 'pi-spin pi-spinner' : 'pi-check-circle'"></i>
+          <span>{{ processingCheckout ? 'Processing...' : 'Confirm & Print Receipt' }}</span>
+        </button>
+
+        <button class="co-cancel-btn" (click)="checkoutModalVisible = false">
+          Cancel
+        </button>
+
+      </div><!-- /co-payment-panel -->
+
+    </div><!-- /co-body -->
+  </div><!-- /co-shell -->
+
+</p-dialog>
+
 
 <!-- ======================================================== -->
 <!-- PRINTABLE INVOICE / RECEIPT MODAL                         -->

@@ -51,6 +51,10 @@ export const WEB_ROUTES: Routes = [
       {
         path: 'restaurant-menu',
         loadComponent: () => import('./pages/restaurant-menu/restaurant-menu.component').then(m => m.RestaurantMenuComponent)
+      },
+      {
+        path: 'restaurant-tables',
+        loadComponent: () => import('./pages/restaurant-tables/restaurant-tables.component').then(m => m.RestaurantTablesComponent)
       }
     ]
   }
