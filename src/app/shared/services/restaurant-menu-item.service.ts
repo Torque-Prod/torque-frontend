@@ -17,6 +17,7 @@ export interface RestaurantMenuItemModel {
   categoryId: number;
   categoryName: string;
   available: boolean;
+  station?: 'KITCHEN' | 'BAR' | 'DESSERT';
   imageType: string;
   imageBase64: string;
 }

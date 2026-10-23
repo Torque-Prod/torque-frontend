@@ -83,6 +83,7 @@
             <th style="width:68px">IMAGE</th>
             <th>ITEM NAME</th>
             <th>CATEGORY</th>
+            <th>STATION</th>
             <th>PRICE (LKR)</th>
             <th class="th-center">STATUS</th>
             <th class="th-center">ACTIONS</th>
@@ -92,14 +93,14 @@
 
           <!-- Loading -->
           <tr *ngIf="loading">
-            <td colspan="6" class="empty-row">
+            <td colspan="7" class="empty-row">
               <i class="pi pi-spin pi-spinner"></i> Loading menu items...
             </td>
           </tr>
 
           <!-- Empty -->
           <tr *ngIf="!loading && filteredItems.length === 0">
-            <td colspan="6" class="empty-row">
+            <td colspan="7" class="empty-row">
               <i class="pi pi-inbox"></i> No menu items found. Click "Add Item" to get started.
             </td>
           </tr>
@@ -125,6 +126,14 @@
             <td>
               <span *ngIf="item.categoryName" class="category-pill">{{ item.categoryName }}</span>
               <span *ngIf="!item.categoryName" class="text-muted">—</span>
+            </td>
+
+            <!-- Station -->
+            <td>
+              <span class="station-pill" [ngClass]="item.station === 'BAR' ? 'station-bar' : 'station-kitchen'">
+                <i class="pi" [ngClass]="item.station === 'BAR' ? 'pi-glass' : 'pi-server'"></i>
+                {{ item.station === 'BAR' ? 'Bar' : (item.station === 'DESSERT' ? 'Dessert' : 'Kitchen') }}
+              </span>
             </td>
 
             <!-- Price -->
@@ -222,6 +231,16 @@
         <select [(ngModel)]="form.categoryId" class="cj-input">
           <option [ngValue]="null">— No Category —</option>
           <option *ngFor="let cat of categories" [ngValue]="cat.id">{{ cat.name }}</option>
+        </select>
+      </div>
+
+      <!-- Kitchen Station -->
+      <div class="cj-field">
+        <label>Kitchen Prep Station <span class="req">*</span></label>
+        <select [(ngModel)]="form.station" class="cj-input">
+          <option value="KITCHEN">🍳 Kitchen (Food / Grill)</option>
+          <option value="BAR">🍸 Bar (Drinks / Beverages)</option>
+          <option value="DESSERT">🍰 Dessert / Bakery</option>
         </select>
       </div>
 

@@ -1,0 +1,200 @@
+<p-toast position="top-right"></p-toast>
+
+<div class="kds-wrapper">
+
+  <!-- ─── TOP KDS CONTROL BAR ─── -->
+  <header class="kds-header">
+    <div class="header-left">
+      <div class="kds-brand">
+        <span class="brand-badge">KDS</span>
+        <div class="brand-text">
+          <span class="brand-title">Kitchen Display</span>
+          <span class="brand-sub">Active Line</span>
+        </div>
+      </div>
+
+      <!-- Segmented Station Switcher -->
+      <div class="station-segmented-control">
+        <button
+          type="button"
+          class="seg-btn"
+          [class.active]="activeStation === 'ALL'"
+          (click)="setStation('ALL')">
+          All ({{ totalActiveTickets }})
+        </button>
+        <button
+          type="button"
+          class="seg-btn"
+          [class.active]="activeStation === 'KITCHEN'"
+          (click)="setStation('KITCHEN')">
+          Kitchen
+        </button>
+        <button
+          type="button"
+          class="seg-btn"
+          [class.active]="activeStation === 'BAR'"
+          (click)="setStation('BAR')">
+          Bar
+        </button>
+        <button
+          type="button"
+          class="seg-btn"
+          [class.active]="activeStation === 'DESSERT'"
+          (click)="setStation('DESSERT')">
+          Dessert
+        </button>
+      </div>
+    </div>
+
+    <!-- Header Actions & Live Status -->
+    <div class="header-right">
+      <div class="prep-count-indicator">
+        <span class="prep-count-num">{{ totalActiveItems }}</span>
+        <span class="prep-count-label">Items Active</span>
+      </div>
+
+      <!-- Recall Ticket Button -->
+      <button
+        *ngIf="lastBumpedOrder"
+        type="button"
+        class="hdr-action-btn recall-btn"
+        (click)="recallLastTicket()"
+        title="Undo last bumped ticket">
+        <i class="pi pi-undo"></i>
+        <span>Recall {{ lastBumpedOrder.orderNumber }}</span>
+      </button>
+
+      <!-- Audio Alert Toggle -->
+      <button
+        type="button"
+        class="hdr-icon-btn"
+        [class.active]="soundEnabled"
+        (click)="toggleSound()"
+        [title]="soundEnabled ? 'Chime Enabled' : 'Chime Muted'">
+        <i class="pi" [ngClass]="soundEnabled ? 'pi-volume-up' : 'pi-volume-off'"></i>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button
+        type="button"
+        class="hdr-icon-btn"
+        (click)="toggleFullscreen()"
+        title="Fullscreen Mode">
+        <i class="pi" [ngClass]="isFullscreen ? 'pi-window-minimize' : 'pi-window-maximize'"></i>
+      </button>
+
+      <!-- Live Clock -->
+      <div class="kds-clock">
+        {{ currentTime | date:'HH:mm:ss' }}
+      </div>
+    </div>
+  </header>
+
+  <!-- ─── PREP SUMMARY / CHEF AGGREGATOR BAR ─── -->
+  <section class="prep-bar" *ngIf="prepSummary.length > 0">
+    <span class="prep-bar-title">QUEUE SUMMARY:</span>
+    <div class="prep-items-scroll">
+      <div class="prep-chip" *ngFor="let item of prepSummary">
+        <span class="prep-qty">{{ item.count }}</span>
+        <span class="prep-name">{{ item.name }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── TICKETS GRID ─── -->
+  <main class="kds-main">
+
+    <!-- Loading State -->
+    <div *ngIf="loading && tickets.length === 0" class="empty-kds-state">
+      <i class="pi pi-spin pi-spinner"></i>
+      <p>Synchronizing active orders...</p>
+    </div>
+
+    <!-- All Caught Up -->
+    <div *ngIf="!loading && tickets.length === 0" class="empty-kds-state all-clear-state">
+      <div class="clear-icon-box">
+        <i class="pi pi-check"></i>
+      </div>
+      <h2>Station Queue Clear</h2>
+      <p>No active orders in the {{ activeStation === 'ALL' ? 'kitchen' : activeStation }} line.</p>
+    </div>
+
+    <!-- Ticket Cards Grid -->
+    <div class="tickets-container" *ngIf="tickets.length > 0">
+      <article
+        class="ticket-card"
+        *ngFor="let order of tickets"
+        [ngClass]="getUrgencyClass(order.createdAt)">
+
+        <!-- Top Urgency Accent Line -->
+        <div class="urgency-stripe"></div>
+
+        <!-- Ticket Card Header -->
+        <header class="ticket-head">
+          <div class="table-info">
+            <span class="table-title">TABLE {{ order.tableNumber || (order.tableId ? order.tableId : '—') }}</span>
+            <span class="source-tag" [ngClass]="order.source === 'CUSTOMER_QR' ? 'tag-qr' : 'tag-pos'">
+              {{ order.source === 'CUSTOMER_QR' ? 'QR' : 'WAITER' }}
+            </span>
+          </div>
+
+          <div class="order-meta">
+            <span class="order-id">#{{ order.orderNumber }}</span>
+            <span class="timer-display">
+              <i class="pi pi-clock"></i>
+              {{ getElapsedFormatted(order.createdAt) }}
+            </span>
+          </div>
+        </header>
+
+        <!-- Ticket Items List -->
+        <div class="ticket-body">
+          <div
+            class="ticket-row"
+            *ngFor="let item of order.items"
+            (click)="bumpItem(item, $event)"
+            [ngClass]="'item-status--' + item.status.toLowerCase()">
+
+            <div class="row-left">
+              <span class="qty-badge">{{ item.quantity }}</span>
+              <div class="item-text">
+                <span class="item-name">{{ item.itemName }}</span>
+                <span *ngIf="item.notes" class="cooking-note">
+                  {{ item.notes }}
+                </span>
+              </div>
+            </div>
+
+            <div class="row-right">
+              <span class="station-tag" *ngIf="item.station === 'BAR'">BAR</span>
+              <span
+                class="status-indicator"
+                [ngClass]="'ind--' + item.status.toLowerCase()">
+                {{ item.status }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Order Note -->
+          <div *ngIf="order.notes" class="order-note-box">
+            <span class="note-lbl">NOTE:</span>
+            <span class="note-txt">{{ order.notes }}</span>
+          </div>
+        </div>
+
+        <!-- Ticket Footer / Bump Button -->
+        <footer class="ticket-foot">
+          <button
+            type="button"
+            class="btn-bump"
+            (click)="bumpTicket(order)">
+            BUMP TICKET
+          </button>
+        </footer>
+
+      </article>
+    </div>
+
+  </main>
+
+</div>

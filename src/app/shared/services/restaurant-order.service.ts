@@ -29,12 +29,15 @@ export interface RestaurantOrderItemModel {
   quantity: number;
   notes: string | null;
   status: OrderItemStatus;
+  station?: 'KITCHEN' | 'BAR' | 'DESSERT';
   lineTotal: number;
 }
 
 export interface RestaurantOrderModel {
   id: number;
   sessionId: number;
+  tableId?: number;
+  tableNumber?: string;
   orderNumber: string;
   source: OrderSource;
   status: OrderStatus;
@@ -106,5 +109,24 @@ export class RestaurantOrderService {
 
   checkoutSession(sessionId: number, request: CheckoutRequest): Observable<SaleDto> {
     return this.http.post<SaleDto>(`${this.orderBase}/session/${sessionId}/checkout`, request);
+  }
+
+  // ─── KDS (Kitchen Display System) API ───────────────────────
+  getActiveKdsTickets(station?: string): Observable<RestaurantOrderModel[]> {
+    const url = station ? `${this.orderBase}/kds/active?station=${station}` : `${this.orderBase}/kds/active`;
+    return this.http.get<RestaurantOrderModel[]>(url);
+  }
+
+  bumpOrderItem(itemId: number): Observable<RestaurantOrderModel> {
+    return this.http.patch<RestaurantOrderModel>(`${this.orderBase}/kds/items/${itemId}/bump`, {});
+  }
+
+  bumpEntireOrder(orderId: number, station?: string): Observable<RestaurantOrderModel> {
+    const url = station ? `${this.orderBase}/kds/${orderId}/bump?station=${station}` : `${this.orderBase}/kds/${orderId}/bump`;
+    return this.http.patch<RestaurantOrderModel>(url, {});
+  }
+
+  recallOrder(orderId: number): Observable<RestaurantOrderModel> {
+    return this.http.patch<RestaurantOrderModel>(`${this.orderBase}/kds/${orderId}/recall`, {});
   }
 }

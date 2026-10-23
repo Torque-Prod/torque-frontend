@@ -46,6 +46,7 @@ export class RestaurantMenuComponent implements OnInit {
     description: '',
     price: 0 as number,
     categoryId: null as number | null,
+    station: 'KITCHEN' as 'KITCHEN' | 'BAR' | 'DESSERT',
     available: true
   };
 
@@ -111,7 +112,7 @@ export class RestaurantMenuComponent implements OnInit {
 
   openAddDialog(): void {
     this.editingItem = null;
-    this.form = { name: '', description: '', price: 0, categoryId: null, available: true };
+    this.form = { name: '', description: '', price: 0, categoryId: null, station: 'KITCHEN', available: true };
     this.selectedImageFile = null;
     this.imagePreview = null;
     this.dialogVisible = true;
@@ -124,6 +125,7 @@ export class RestaurantMenuComponent implements OnInit {
       description: item.description,
       price: item.price,
       categoryId: item.categoryId,
+      station: item.station || 'KITCHEN',
       available: item.available
     };
     this.imagePreview = item.imageBase64 || null;
@@ -162,6 +164,7 @@ export class RestaurantMenuComponent implements OnInit {
       description: this.form.description,
       price: this.form.price,
       categoryId: this.form.categoryId,
+      station: this.form.station,
       available: this.form.available
     })], { type: 'application/json' });
     formData.append('item', itemBlob);
