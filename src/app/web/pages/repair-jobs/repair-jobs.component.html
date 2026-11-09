@@ -71,6 +71,23 @@
                         </div>
                     </th>
                     <th>
+                        <div class="filter-cell">
+                            <label class="filter-label">CREATED DATE</label>
+                            <p-calendar
+                                    [(ngModel)]="filters.createdDate"
+                                    dateFormat="yy-mm-dd"
+                                    [showIcon]="false"
+                                    [showClear]="true"
+                                    (ngModelChange)="onFilterChange()"
+                                    (onSelect)="onFilterChange()"
+                                    (onClearClick)="onClearCreatedDate()"
+                                    placeholder="Select Date"
+                                    appendTo="body"
+                                    styleClass="filter-calendar-sm">
+                            </p-calendar>
+                        </div>
+                    </th>
+                    <th>
 
                         <div class="filter-cell">
                             <label class="filter-label">CUSTOMER</label>
@@ -145,16 +162,23 @@
                 </thead>
                 <tbody>
                 <tr *ngIf="loading">
-                    <td colspan="10" class="empty-row"><i class="pi pi-spin pi-spinner"></i> Loading...</td>
+                    <td colspan="11" class="empty-row"><i class="pi pi-spin pi-spinner"></i> Loading...</td>
                 </tr>
                 <tr *ngIf="!loading && jobs.length === 0">
-                    <td colspan="10" class="empty-row"><i class="pi pi-inbox"></i> No repair jobs found</td>
+                    <td colspan="11" class="empty-row"><i class="pi pi-inbox"></i> No repair jobs found</td>
                 </tr>
                 <tr *ngFor="let job of jobs" class="rj-row">
                     <!-- Job No -->
                     <td>
                         <span class="job-number" (click)="openDetailDialog(job)">{{ job.jobNumber }}</span>
-
+                    </td>
+                    <!-- Created Date -->
+                    <td>
+                        <div class="date-cell" *ngIf="job.createdAt">
+                            <span class="date-primary">{{ job.createdAt | date:'yyyy-MM-dd' }}</span>
+                            <span class="date-secondary">{{ job.createdAt | date:'hh:mm a' }}</span>
+                        </div>
+                        <span *ngIf="!job.createdAt" class="text-muted">—</span>
                     </td>
                     <!-- Customer -->
                     <td>

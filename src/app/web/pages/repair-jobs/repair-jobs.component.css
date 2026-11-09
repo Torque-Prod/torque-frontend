@@ -83,6 +83,43 @@
     color: #cbd5e1 !important;
 }
 
+/* p-calendar — match filter-input style */
+.filter-cell ::ng-deep .filter-calendar-sm {
+    width: 100% !important;
+    display: flex !important;
+}
+
+.filter-cell ::ng-deep .filter-calendar-sm .p-inputtext {
+    width: 100% !important;
+    height: 29px !important;
+    min-height: unset !important;
+    padding: 0 8px !important;
+    font-size: 12px !important;
+    border: 0.5px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    color: #374151 !important;
+    outline: none !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.filter-cell ::ng-deep .filter-calendar-sm .p-inputtext:hover {
+    border-color: #cbd5e1 !important;
+}
+
+.filter-cell ::ng-deep .filter-calendar-sm .p-inputtext:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1) !important;
+}
+
+.filter-cell ::ng-deep .filter-calendar-sm .p-clear-icon {
+    font-size: 0.75rem !important;
+    color: #94a3b8 !important;
+    right: 8px !important;
+}
+
 .filter-cell ::ng-deep .p-dropdown .p-dropdown-trigger {
     width: 24px !important;
     color: #94a3b8 !important;
@@ -462,6 +499,24 @@
 .job-number:hover {
     color: #1d4ed8;
     text-decoration: underline;
+}
+
+/* Date Cell */
+.date-cell {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+}
+
+.date-primary {
+    font-weight: 600;
+    color: #334155;
+    font-size: 0.8125rem;
+}
+
+.date-secondary {
+    font-size: 0.6875rem;
+    color: #94a3b8;
 }
 
 /* Customer Cell */

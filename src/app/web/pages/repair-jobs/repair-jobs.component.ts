@@ -86,7 +86,8 @@ export class RepairJobsComponent implements OnInit {
         serialNumber: '',
         technicianName: '',
         status: null as string | null,
-        paid: null as boolean | null
+        paid: null as boolean | null,
+        createdDate: null as Date | string | null
     };
 
     // ── Status summary counters (separate lightweight call) ────
@@ -172,12 +173,24 @@ export class RepairJobsComponent implements OnInit {
             this.sortOrder = event.sortOrder ?? this.sortOrder;
         }
 
+        let formattedCreatedDate: string | null = null;
+        if (this.filters.createdDate) {
+            if (this.filters.createdDate instanceof Date) {
+                const d = this.filters.createdDate;
+                formattedCreatedDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            } else if (typeof this.filters.createdDate === 'string' && (this.filters.createdDate as string).trim()) {
+                formattedCreatedDate = (this.filters.createdDate as string).trim();
+            }
+        }
+
         const payload = {
             first: this.first,
             rows: this.rows,
             sortField: this.sortField,
             sortOrder: this.sortOrder,
             globalFilter: this.searchKeyword || null,
+            startDate: formattedCreatedDate,
+            endDate: formattedCreatedDate,
             filters: {
                 'rp.jobNumber': {value: this.filters.jobNumber || null, matchMode: 'contains'},
                 'customerName': {value: this.filters.customerName || null, matchMode: 'contains'},
@@ -186,7 +199,8 @@ export class RepairJobsComponent implements OnInit {
                 'serialNumber': {value: this.filters.serialNumber || null, matchMode: 'contains'},
                 'technicianName': {value: this.filters.technicianName || null, matchMode: 'contains'},
                 'status': {value: this.activeStatusFilter || this.filters.status || null, matchMode: 'equals'},
-                'paid': {value: this.filters.paid, matchMode: 'equals'}
+                'paid': {value: this.filters.paid, matchMode: 'equals'},
+                'createdAt': {value: formattedCreatedDate, matchMode: 'equals'}
             }
         };
 
@@ -206,12 +220,24 @@ export class RepairJobsComponent implements OnInit {
     // ── Export to Excel ────────────────────────────────────
     exportToExcel(): void {
         this.exporting = true;
+        let formattedCreatedDate: string | null = null;
+        if (this.filters.createdDate) {
+            if (this.filters.createdDate instanceof Date) {
+                const d = this.filters.createdDate;
+                formattedCreatedDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            } else if (typeof this.filters.createdDate === 'string' && (this.filters.createdDate as string).trim()) {
+                formattedCreatedDate = (this.filters.createdDate as string).trim();
+            }
+        }
+
         const payload = {
             first: 0,
             rows: 100000,
             sortField: this.sortField,
             sortOrder: this.sortOrder,
             globalFilter: this.searchKeyword || null,
+            startDate: formattedCreatedDate,
+            endDate: formattedCreatedDate,
             filters: {
                 'rp.jobNumber': {value: this.filters.jobNumber || null, matchMode: 'contains'},
                 'customerName': {value: this.filters.customerName || null, matchMode: 'contains'},
@@ -220,7 +246,8 @@ export class RepairJobsComponent implements OnInit {
                 'serialNumber': {value: this.filters.serialNumber || null, matchMode: 'contains'},
                 'technicianName': {value: this.filters.technicianName || null, matchMode: 'contains'},
                 'status': {value: this.activeStatusFilter || this.filters.status || null, matchMode: 'equals'},
-                'paid': {value: this.filters.paid, matchMode: 'equals'}
+                'paid': {value: this.filters.paid, matchMode: 'equals'},
+                'createdAt': {value: formattedCreatedDate, matchMode: 'equals'}
             }
         };
 
@@ -263,6 +290,11 @@ export class RepairJobsComponent implements OnInit {
     onFilterChange(): void {
         this.first = 0;
         this.loadJobs();
+    }
+
+    onClearCreatedDate(): void {
+        this.filters.createdDate = null;
+        this.onFilterChange();
     }
 
     onSearch(): void {
