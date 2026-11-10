@@ -62,11 +62,15 @@ export class SalesComponent implements OnInit {
   catalogRows: number = 12;
   catalogSearch: string = '';
   loadingCatalog: boolean = false;
+  categories: string[] = [];
+  selectedCategory: string = '';
 
   // ── POS Catalog State — Restaurant ──
   restaurantItems: RestaurantMenuItemModel[] = [];
   filteredRestaurantItems: RestaurantMenuItemModel[] = [];
   restaurantSearch: string = '';
+  restaurantCategories: string[] = [];
+  selectedRestaurantCategory: string = '';
 
   // ── POS Cart State ──
   cart: CartItem[] = [];
@@ -167,6 +171,7 @@ export class SalesComponent implements OnInit {
         this.loadTables();
       } else {
         this.loadCatalog();
+        this.loadCategories();
       }
     });
     this.loadCustomers();
@@ -179,6 +184,13 @@ export class SalesComponent implements OnInit {
       next: (items) => {
         this.restaurantItems = items;
         this.filteredRestaurantItems = items;
+        const catSet = new Set<string>();
+        items.forEach(i => {
+          if (i.categoryName && i.categoryName.trim()) {
+            catSet.add(i.categoryName.trim());
+          }
+        });
+        this.restaurantCategories = Array.from(catSet).sort();
         this.loadingCatalog = false;
       },
       error: () => {
@@ -190,13 +202,21 @@ export class SalesComponent implements OnInit {
 
   onRestaurantSearch(): void {
     const q = this.restaurantSearch.toLowerCase().trim();
-    if (!q) {
-      this.filteredRestaurantItems = this.restaurantItems;
-    } else {
-      this.filteredRestaurantItems = this.restaurantItems.filter(item =>
+    let list = this.restaurantItems;
+    if (this.selectedRestaurantCategory) {
+      list = list.filter(item => item.categoryName === this.selectedRestaurantCategory);
+    }
+    if (q) {
+      list = list.filter(item =>
         item.name.toLowerCase().includes(q) || (item.categoryName && item.categoryName.toLowerCase().includes(q))
       );
     }
+    this.filteredRestaurantItems = list;
+  }
+
+  filterRestaurantCategory(cat: string): void {
+    this.selectedRestaurantCategory = cat;
+    this.onRestaurantSearch();
   }
 
   // Add food menu item to POS cart
@@ -227,15 +247,35 @@ export class SalesComponent implements OnInit {
   }
 
   // ─── REPAIR CENTER CATALOG ────────────────────────────────
+  loadCategories(): void {
+    this.partService.getAll().subscribe({
+      next: (all) => {
+        const set = new Set<string>();
+        all.forEach(p => {
+          if (p.category && p.category.trim()) {
+            set.add(p.category.trim());
+          }
+        });
+        this.categories = Array.from(set).sort();
+      },
+      error: () => {}
+    });
+  }
+
   loadCatalog(): void {
     this.loadingCatalog = true;
-    const dto = {
+    const dto: any = {
       first: this.catalogFirst,
       rows: this.catalogRows,
       globalFilter: this.catalogSearch,
       sortField: 'name',
       sortOrder: 1
     };
+    if (this.selectedCategory) {
+      dto.filters = {
+        category: { value: this.selectedCategory, matchMode: 'contains' }
+      };
+    }
 
     this.partService.searchPaged(dto).subscribe({
       next: (res: PagedPartResponse) => {
@@ -248,6 +288,12 @@ export class SalesComponent implements OnInit {
         this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to load parts catalog' });
       }
     });
+  }
+
+  filterByCategory(cat: string): void {
+    this.selectedCategory = cat;
+    this.catalogFirst = 0;
+    this.loadCatalog();
   }
 
   onCatalogSearch(): void {

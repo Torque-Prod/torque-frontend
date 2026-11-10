@@ -37,6 +37,7 @@ export class DashboardComponent implements OnInit {
   // Breakdown
   totalJobs = 0;
   statusConfigs: JobStatusConfig[] = [];
+  allJobs: RepairJob[] = [];
 
   constructor(
     private authService: AuthService,
@@ -64,6 +65,7 @@ export class DashboardComponent implements OnInit {
       next: (r) => {
         const jobs = r.jobs || [];
         const sales = r.sales || [];
+        this.allJobs = jobs;
         this.statusConfigs = r.statuses || [];
         this.customerCount = r.customers?.length || 0;
         this.lowStockCount = r.parts?.filter(p => p.stockQuantity <= 5).length || 0;
@@ -109,17 +111,17 @@ export class DashboardComponent implements OnInit {
         icon: config.icon
       };
     }
-    return { label: statusKey, bg: '#f1f5f9', color: '#475569', border: '#cbd5e1', icon: 'pi pi-circle' };
+    return { label: statusKey || 'Unknown', bg: '#f1f5f9', color: '#475569', border: '#cbd5e1', icon: 'pi pi-circle' };
   }
 
   getStatusPercent(statusKey: string): number {
     if (this.totalJobs === 0) return 0;
-    const count = this.recentJobs.filter(j => j.status === statusKey).length; // This is actually for all jobs in a real app, but let's use recentJobs for now or recalculate
-    return Math.round((this.recentJobs.filter(j => j.status === statusKey).length / this.totalJobs) * 100);
+    const count = this.allJobs.filter(j => j.status === statusKey).length;
+    return Math.round((count / this.totalJobs) * 100);
   }
 
   // Helper for progress bars
   getJobsByStatusCount(statusKey: string): number {
-    return this.recentJobs.filter(j => j.status === statusKey).length; // Need to store full jobs list if we want real stats
+    return this.allJobs.filter(j => j.status === statusKey).length;
   }
 }

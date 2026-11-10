@@ -67,6 +67,43 @@
         </div>
       </div>
 
+      <!-- Category Filter Pills (matching reference screenshot) -->
+      <div class="pos-category-pills" *ngIf="businessType === 'REPAIR_CENTER' && categories.length > 0">
+        <button 
+          type="button"
+          class="cat-pill" 
+          [class.is-active]="!selectedCategory" 
+          (click)="filterByCategory('')">
+          <i class="pi pi-th-large"></i> All
+        </button>
+        <button 
+          type="button"
+          *ngFor="let cat of categories" 
+          class="cat-pill" 
+          [class.is-active]="selectedCategory === cat" 
+          (click)="filterByCategory(cat)">
+          <i class="pi pi-tag"></i> {{ cat }}
+        </button>
+      </div>
+
+      <div class="pos-category-pills" *ngIf="businessType === 'RESTAURANT' && restaurantCategories.length > 0">
+        <button 
+          type="button"
+          class="cat-pill" 
+          [class.is-active]="!selectedRestaurantCategory" 
+          (click)="filterRestaurantCategory('')">
+          <i class="pi pi-th-large"></i> All
+        </button>
+        <button 
+          type="button"
+          *ngFor="let cat of restaurantCategories" 
+          class="cat-pill" 
+          [class.is-active]="selectedRestaurantCategory === cat" 
+          (click)="filterRestaurantCategory(cat)">
+          <i class="pi pi-tag"></i> {{ cat }}
+        </button>
+      </div>
+
       <!-- ── RESTAURANT: Food Menu Grid ── -->
       <div class="parts-grid-scroll" *ngIf="businessType === 'RESTAURANT'">
         <div *ngIf="loadingCatalog" class="catalog-empty">
@@ -81,26 +118,39 @@
             class="part-card"
             (click)="addMenuItemToCart(item)">
 
-            <!-- Image -->
-            <div class="part-card__img">
-              <img *ngIf="item.imageBase64" [src]="item.imageBase64" alt="{{ item.name }}" />
-              <div *ngIf="!item.imageBase64" class="part-card__img-fallback">
-                <i class="pi pi-bowl-hot"></i>
+            <!-- Top: Thumbnail Icon + Status Badge -->
+            <div class="part-card__top">
+              <div class="part-card__icon-box">
+                <img *ngIf="item.imageBase64" [src]="item.imageBase64" alt="{{ item.name }}" />
+                <div *ngIf="!item.imageBase64" class="part-card__icon-fallback">
+                  <i class="pi pi-bowl-hot"></i>
+                </div>
               </div>
-              <span class="part-stock-badge" *ngIf="item.category">
-                {{ item.category }}
+              <span class="part-stock-badge">
+                <span class="stock-dot"></span>
+                Available
               </span>
             </div>
 
-            <!-- Info -->
-            <div class="part-card__info">
+            <!-- Body: Name & Meta Tags -->
+            <div class="part-card__body">
               <h4 class="part-card__name" [title]="item.name">{{ item.name }}</h4>
-              <div class="part-card__bottom">
-                <span class="part-card__price">LKR {{ item.price | number:'1.2-2' }}</span>
-                <button class="add-cart-btn" (click)="$event.stopPropagation(); addMenuItemToCart(item)">
-                  <i class="pi pi-plus"></i>
-                </button>
+              <div class="part-card__tags">
+                <span class="part-meta-tag tag-sku" *ngIf="item.id">
+                  CODE: #{{ item.id }}
+                </span>
+                <span class="part-meta-tag tag-shelf" *ngIf="item.categoryName">
+                  <i class="pi pi-tag"></i> {{ item.categoryName }}
+                </span>
               </div>
+            </div>
+
+            <!-- Bottom: Add Pill Button & Price -->
+            <div class="part-card__bottom">
+              <button class="add-cart-pill-btn" (click)="$event.stopPropagation(); addMenuItemToCart(item)">
+                <i class="pi pi-plus"></i> Add
+              </button>
+              <span class="part-card__price">LKR {{ item.price | number:'1.2-2' }}</span>
             </div>
           </div>
         </div>
@@ -122,25 +172,44 @@
             [class.out-of-stock]="part.stockQuantity <= 0"
             (click)="addToCart(part)">
             
-            <div class="part-card__img">
-              <img *ngIf="part.hasImage" [src]="getPartImageUrl(part.id!)" alt="{{ part.name }}" />
-              <div *ngIf="!part.hasImage" class="part-card__img-fallback">
-                <i class="pi pi-box"></i>
+            <!-- Top: Thumbnail Icon + Stock Status Badge -->
+            <div class="part-card__top">
+              <div class="part-card__icon-box">
+                <img *ngIf="part.hasImage" [src]="getPartImageUrl(part.id!)" alt="{{ part.name }}" />
+                <div *ngIf="!part.hasImage" class="part-card__icon-fallback">
+                  <i class="pi pi-box"></i>
+                </div>
               </div>
-              <span class="part-stock-badge" [class.badge-low]="part.stockQuantity <= 5" [class.badge-out]="part.stockQuantity <= 0">
+              <span class="part-stock-badge" [class.badge-low]="part.stockQuantity > 0 && part.stockQuantity <= 5" [class.badge-out]="part.stockQuantity <= 0">
+                <span class="stock-dot"></span>
                 {{ part.stockQuantity > 0 ? (part.stockQuantity + ' in stock') : 'Out of Stock' }}
               </span>
             </div>
 
-            <div class="part-card__info">
-              <span class="part-category-tag" *ngIf="part.category">{{ part.category }}</span>
+            <!-- Body: Title & Meta Badges -->
+            <div class="part-card__body">
               <h4 class="part-card__name" [title]="part.name">{{ part.name }}</h4>
-              <div class="part-card__bottom">
-                <span class="part-card__price">Rs. {{ part.price | number:'1.2-2' }}</span>
-                <button class="add-cart-btn" [disabled]="part.stockQuantity <= 0" (click)="$event.stopPropagation(); addToCart(part)">
-                  <i class="pi pi-plus"></i>
-                </button>
+
+              <div class="part-card__tags">
+                <span class="part-meta-tag tag-shelf" *ngIf="part.containerLocation" [title]="'Shelf/Bin: ' + part.containerLocation">
+                  <i class="pi pi-map-marker"></i> {{ part.containerLocation }}
+                </span>
+                <span class="part-meta-tag tag-sku">
+                  SKU: PRT-{{ part.id }}
+                </span>
               </div>
+
+              <div class="part-card__category" *ngIf="part.category">
+                <i class="pi pi-tag"></i> {{ part.category }}
+              </div>
+            </div>
+
+            <!-- Bottom: Add Pill Button & Bold Price -->
+            <div class="part-card__bottom">
+              <button class="add-cart-pill-btn" [disabled]="part.stockQuantity <= 0" (click)="$event.stopPropagation(); addToCart(part)">
+                <i class="pi pi-plus"></i> Add
+              </button>
+              <span class="part-card__price">Rs. {{ part.price | number:'1.2-2' }}</span>
             </div>
           </div>
         </div>

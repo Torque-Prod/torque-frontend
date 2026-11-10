@@ -1,61 +1,145 @@
 <div class="rj-page dash-page">
-  
-  <!-- Welcome Banner -->
-  <div class="welcome-banner">
-    <div class="banner-content">
-      <h1 class="banner-title">Welcome back, {{ username }}!</h1>
-      <p class="banner-subtitle">{{ today | date:'EEEE, MMMM d, yyyy' }}</p>
+
+  <!-- Header Row: Title, Date Chip & Quick CTA Buttons -->
+  <div class="dash-header">
+    <div class="dash-header__left">
+      <div class="dash-header__title-row">
+        <h1 class="dash-header__title">
+          <i class="pi pi-th-large"></i> Dashboard
+        </h1>
+        <span class="header-live-badge">
+          <span class="live-dot"></span> Live Overview
+        </span>
+      </div>
+      <p class="dash-header__subtitle">Welcome back, <strong>{{ username }}</strong> • {{ today | date:'EEEE, MMMM d, yyyy' }}</p>
     </div>
-    <div class="banner-stats">
-      <div class="b-stat">
-        <span class="b-stat-label">Total Billed</span>
-        <span class="b-stat-val">Rs. {{ totalBilled | number }}</span>
+
+    <div class="dash-header__actions">
+      <button class="dash-action-btn secondary" (click)="router.navigate(['/web/sales'])">
+        <i class="pi pi-shopping-cart"></i> POS Register
+      </button>
+      <button class="dash-action-btn primary" (click)="router.navigate(['/web/repair-jobs'])">
+        <i class="pi pi-plus"></i> New Repair Job
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI Metrics Cards Strip (5 Compact Cards) -->
+  <div class="dash-kpi-grid">
+    <!-- Card 1: Revenue -->
+    <div class="kpi-card kpi-card--revenue" (click)="router.navigate(['/web/sales'])">
+      <div class="kpi-card__top">
+        <span class="kpi-label">Total Billed</span>
+        <div class="kpi-icon-box kpi-icon--green"><i class="pi pi-wallet"></i></div>
       </div>
-      <div class="b-divider"></div>
-      <div class="b-stat">
-        <span class="b-stat-label">Open Jobs</span>
-        <span class="b-stat-val">{{ activeJobsCount }}</span>
+      <div class="kpi-card__val">Rs. {{ totalBilled | number:'1.0-0' }}</div>
+      <div class="kpi-card__sub text-success">
+        <i class="pi pi-arrow-up-right"></i> Paid jobs & direct sales
       </div>
-      <div class="b-divider"></div>
-      <div class="b-stat">
-        <span class="b-stat-label">Completed</span>
-        <span class="b-stat-val">{{ completedJobsCount }}</span>
+    </div>
+
+    <!-- Card 2: Active Jobs -->
+    <div class="kpi-card kpi-card--active" (click)="router.navigate(['/web/repair-jobs'])">
+      <div class="kpi-card__top">
+        <span class="kpi-label">Active Jobs</span>
+        <div class="kpi-icon-box kpi-icon--blue"><i class="pi pi-wrench"></i></div>
+      </div>
+      <div class="kpi-card__val">{{ activeJobsCount }}</div>
+      <div class="kpi-card__sub text-blue">
+        <i class="pi pi-clock"></i> In progress & awaiting
+      </div>
+    </div>
+
+    <!-- Card 3: Completed Jobs -->
+    <div class="kpi-card kpi-card--completed" (click)="router.navigate(['/web/repair-jobs'])">
+      <div class="kpi-card__top">
+        <span class="kpi-label">Completed Jobs</span>
+        <div class="kpi-icon-box kpi-icon--teal"><i class="pi pi-check-circle"></i></div>
+      </div>
+      <div class="kpi-card__val">{{ completedJobsCount }}</div>
+      <div class="kpi-card__sub text-teal">
+        <i class="pi pi-verified"></i> Delivered / Closed
+      </div>
+    </div>
+
+    <!-- Card 4: Low Stock Alert -->
+    <div class="kpi-card kpi-card--warning" (click)="router.navigate(['/web/inventory'])">
+      <div class="kpi-card__top">
+        <span class="kpi-label">Low Stock</span>
+        <div class="kpi-icon-box kpi-icon--amber"><i class="pi pi-exclamation-triangle"></i></div>
+      </div>
+      <div class="kpi-card__val" [class.text-alert]="lowStockCount > 0">{{ lowStockCount }}</div>
+      <div class="kpi-card__sub" [class.text-amber]="lowStockCount > 0">
+        <i class="pi pi-box"></i> {{ lowStockCount > 0 ? 'Parts need restock' : 'All stock optimal' }}
+      </div>
+    </div>
+
+    <!-- Card 5: Total Customers -->
+    <div class="kpi-card kpi-card--customers" (click)="router.navigate(['/web/customers'])">
+      <div class="kpi-card__top">
+        <span class="kpi-label">Total Customers</span>
+        <div class="kpi-icon-box kpi-icon--purple"><i class="pi pi-users"></i></div>
+      </div>
+      <div class="kpi-card__val">{{ customerCount }}</div>
+      <div class="kpi-card__sub text-indigo">
+        <i class="pi pi-id-card"></i> Registered profiles
       </div>
     </div>
   </div>
 
-  <!-- 3 Column Layout -->
-  <div class="dash-grid-3col">
-    
-    <!-- Column 1: Recent Jobs -->
-    <div class="dash-col">
-      <div class="rj-table-card h-full">
+  <!-- Main Content Layout (2 Columns: 2/3 Operations + 1/3 Analytics & Actions) -->
+  <div class="dash-main-grid">
+
+    <!-- LEFT COLUMN: Operational Tables -->
+    <div class="dash-main-col">
+
+      <!-- Recent Jobs Table Card -->
+      <div class="dash-table-card">
         <div class="dash-card-header">
-          <h3 class="section-title"><i class="pi pi-history"></i> Recent Jobs</h3>
-          <button class="btn-link" (click)="router.navigate(['/web/repair-jobs'])">View All</button>
+          <div class="dash-card-header__left">
+            <h3 class="section-title"><i class="pi pi-history"></i> Recent Repair Jobs</h3>
+            <span class="section-badge">Latest 5</span>
+          </div>
+          <button class="btn-link" (click)="router.navigate(['/web/repair-jobs'])">
+            View All <i class="pi pi-arrow-right"></i>
+          </button>
         </div>
-        <div class="rj-table-wrap">
-          <table class="rj-table">
+
+        <div class="dash-table-wrap">
+          <table class="dash-table">
             <thead>
               <tr>
-                <th>JOB NO</th>
-                <th>CUSTOMER</th>
-                <th>STATUS</th>
+                <th>Job No</th>
+                <th>Customer</th>
+                <th>Item / Machine</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngIf="recentJobs.length === 0">
-                <td colspan="3" class="empty-row">No recent jobs</td>
+                <td colspan="4" class="empty-row">
+                  <i class="pi pi-inbox"></i> No recent jobs recorded
+                </td>
               </tr>
-              <tr *ngFor="let job of recentJobs" class="rj-row" style="cursor:pointer" (click)="router.navigate(['/web/repair-jobs'])">
-                <td><span class="job-number">{{ job.jobNumber }}</span></td>
-                <td><strong class="customer-name">{{ job.customerName }}</strong></td>
+              <tr *ngFor="let job of recentJobs" class="dash-table-row" (click)="router.navigate(['/web/repair-jobs'])">
                 <td>
-                  <span class="status-pill"
+                  <span class="job-mono-tag">
+                    <i class="pi pi-file"></i> {{ job.jobNumber }}
+                  </span>
+                </td>
+                <td>
+                  <div class="cell-primary">{{ job.customerName }}</div>
+                  <div class="cell-sub" *ngIf="job.customerPhone">{{ job.customerPhone }}</div>
+                </td>
+                <td>
+                  <span class="item-name-tag">{{ job.itemName }}</span>
+                </td>
+                <td>
+                  <span class="status-micro-pill"
                     [style.background]="getStatusOption(job.status).bg"
                     [style.color]="getStatusOption(job.status).color"
                     [style.border-color]="getStatusOption(job.status).border">
-                    <i [class]="getStatusOption(job.status).icon"></i>
+                    <span class="status-dot" [style.background]="getStatusOption(job.status).color"></span>
                     {{ getStatusOption(job.status).label }}
                   </span>
                 </td>
@@ -64,102 +148,162 @@
           </table>
         </div>
       </div>
-    </div>
 
-    <!-- Column 2: Unassigned Jobs -->
-    <div class="dash-col">
-      <div class="rj-table-card h-full border-alert">
+      <!-- Unassigned Jobs Table Card -->
+      <div class="dash-table-card" [class.card-alert-border]="hasUnassignedJobs">
         <div class="dash-card-header">
-          <h3 class="section-title text-alert"><i class="pi pi-exclamation-circle"></i> Unassigned Jobs</h3>
-          <span class="badge-alert" *ngIf="hasUnassignedJobs">{{ unassignedJobs.length }} need attention</span>
+          <div class="dash-card-header__left">
+            <h3 class="section-title" [class.text-alert]="hasUnassignedJobs">
+              <i class="pi pi-exclamation-circle"></i> Unassigned Jobs
+            </h3>
+            <span class="badge-alert" *ngIf="hasUnassignedJobs">
+              {{ unassignedJobs.length }} need technician
+            </span>
+          </div>
+          <button class="btn-link" (click)="router.navigate(['/web/repair-jobs'])">
+            Manage <i class="pi pi-arrow-right"></i>
+          </button>
         </div>
-        <div class="rj-table-wrap">
-          <table class="rj-table">
+
+        <div class="dash-table-wrap">
+          <table class="dash-table">
             <thead>
               <tr>
-                <th>JOB NO</th>
-                <th>ITEM</th>
-                <th>RECEIVED</th>
+                <th>Job No</th>
+                <th>Item / Description</th>
+                <th>Received</th>
+                <th style="text-align: right;">Action</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngIf="!hasUnassignedJobs">
-                <td colspan="3" class="empty-row empty-success">
-                  <i class="pi pi-check-circle"></i> All jobs assigned
+                <td colspan="4" class="empty-row empty-success">
+                  <i class="pi pi-check-circle"></i> All active jobs have been assigned to technicians
                 </td>
               </tr>
-              <tr *ngFor="let job of unassignedJobs" class="rj-row" style="cursor:pointer" (click)="router.navigate(['/web/repair-jobs'])">
-                <td><span class="job-number">{{ job.jobNumber }}</span></td>
-                <td><strong class="customer-name">{{ job.itemName }}</strong></td>
-                <td class="text-muted">{{ job.receivedDate | date:'MMM d' }}</td>
+              <tr *ngFor="let job of unassignedJobs" class="dash-table-row" (click)="router.navigate(['/web/repair-jobs'])">
+                <td>
+                  <span class="job-mono-tag tag-warning">
+                    {{ job.jobNumber }}
+                  </span>
+                </td>
+                <td>
+                  <div class="cell-primary">{{ job.itemName }}</div>
+                  <div class="cell-sub" *ngIf="job.customerName">{{ job.customerName }}</div>
+                </td>
+                <td>
+                  <span class="date-chip">{{ job.receivedDate | date:'MMM d, yyyy' }}</span>
+                </td>
+                <td style="text-align: right;">
+                  <button class="assign-action-btn" (click)="$event.stopPropagation(); router.navigate(['/web/repair-jobs'])">
+                    <i class="pi pi-user-plus"></i> Assign
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
+
     </div>
 
-    <!-- Column 3: Right Panel -->
-    <div class="dash-col right-panel">
-      
-      <!-- Alert Card -->
-      <div class="alert-card" *ngIf="hasUnassignedJobs">
-        <div class="alert-icon"><i class="pi pi-exclamation-triangle"></i></div>
-        <div class="alert-content">
+    <!-- RIGHT COLUMN: Alerts, Pipeline Breakdown & Quick Launcher -->
+    <div class="dash-side-col">
+
+      <!-- Action Required Notification Banner (if unassigned jobs) -->
+      <div class="dash-alert-banner" *ngIf="hasUnassignedJobs">
+        <div class="dash-alert-banner__icon">
+          <i class="pi pi-bell"></i>
+        </div>
+        <div class="dash-alert-banner__content">
           <h4>Action Required</h4>
-          <p>{{ unassignedJobs.length }} active jobs are waiting to be assigned to a technician.</p>
-          <button class="btn-alert" (click)="router.navigate(['/web/repair-jobs'])">Assign Now</button>
+          <p>{{ unassignedJobs.length }} job{{ unassignedJobs.length > 1 ? 's are' : ' is' }} waiting for technician assignment.</p>
+          <button class="dash-alert-btn" (click)="router.navigate(['/web/repair-jobs'])">
+            <i class="pi pi-external-link"></i> Assign Jobs
+          </button>
         </div>
       </div>
 
-      <!-- Job Status Breakdown -->
-      <div class="quick-section" style="margin-bottom: 2rem;">
-        <h3 class="section-title"><i class="pi pi-chart-bar"></i> Job Breakdown</h3>
-        <div class="breakdown-card">
-          <div *ngFor="let s of statusConfigs | slice:0:4" class="breakdown-item">
-            <div class="breakdown-info">
-              <span class="breakdown-label">{{ s.displayName }}</span>
-              <span class="breakdown-val">{{ getJobsByStatusCount(s.statusKey) }}</span>
+      <!-- Job Status Pipeline Breakdown -->
+      <div class="dash-side-card">
+        <div class="dash-card-header">
+          <div class="dash-card-header__left">
+            <h3 class="section-title"><i class="pi pi-chart-pie"></i> Workflow Pipeline</h3>
+          </div>
+          <span class="section-badge">{{ totalJobs }} total</span>
+        </div>
+
+        <div class="pipeline-list">
+          <div *ngFor="let s of statusConfigs | slice:0:5" class="pipeline-row">
+            <div class="pipeline-row__info">
+              <span class="pipeline-label">
+                <span class="pipeline-dot" [style.background]="s.color"></span>
+                {{ s.displayName }}
+              </span>
+              <span class="pipeline-count">
+                <strong>{{ getJobsByStatusCount(s.statusKey) }}</strong>
+                <span class="pipeline-pct">({{ getStatusPercent(s.statusKey) }}%)</span>
+              </span>
             </div>
-            <div class="progress-bar-bg">
-              <div class="progress-bar-fill" [style.width.%]="getStatusPercent(s.statusKey)" [style.background]="s.color"></div>
+            <div class="pipeline-bar-bg">
+              <div class="pipeline-bar-fill" 
+                [style.width.%]="getStatusPercent(s.statusKey)" 
+                [style.background]="s.color">
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Quick Actions -->
-<!--      <div class="quick-section">-->
-<!--        <h3 class="section-title"><i class="pi pi-th-large"></i> Quick Management</h3>-->
-<!--        <div class="tiles-grid">-->
-<!--          <div class="tile" (click)="router.navigate(['/web/repair-jobs'])">-->
-<!--            <div class="tile-icon tile-icon&#45;&#45;jobs"><i class="pi pi-list"></i></div>-->
-<!--            <div class="tile-info">-->
-<!--              <h4>Workflow</h4>-->
-<!--              <p>Track repair progress</p>-->
-<!--            </div>-->
-<!--            <i class="pi pi-chevron-right tile-arrow"></i>-->
-<!--          </div>-->
-<!--          <div class="tile" (click)="router.navigate(['/web/customers'])">-->
-<!--            <div class="tile-icon tile-icon&#45;&#45;cust"><i class="pi pi-user-plus"></i></div>-->
-<!--            <div class="tile-info">-->
-<!--              <h4>Directory</h4>-->
-<!--              <p>Manage customer data</p>-->
-<!--            </div>-->
-<!--            <i class="pi pi-chevron-right tile-arrow"></i>-->
-<!--          </div>-->
-<!--          <div class="tile" (click)="router.navigate(['/web/inventory'])">-->
-<!--            <div class="tile-icon tile-icon&#45;&#45;inv"><i class="pi pi-box"></i></div>-->
-<!--            <div class="tile-info">-->
-<!--              <h4>Inventory</h4>-->
-<!--              <p>Stock & Spare parts</p>-->
-<!--            </div>-->
-<!--            <i class="pi pi-chevron-right tile-arrow"></i>-->
-<!--          </div>-->
-<!--        </div>-->
-<!--      </div>-->
+      <!-- Quick Launcher Shortcuts -->
+      <div class="dash-side-card">
+        <div class="dash-card-header">
+          <div class="dash-card-header__left">
+            <h3 class="section-title"><i class="pi pi-bolt"></i> Quick Actions</h3>
+          </div>
+        </div>
+
+        <div class="quick-launcher-grid">
+          <div class="quick-tile" (click)="router.navigate(['/web/repair-jobs'])">
+            <div class="quick-tile__icon icon-jobs"><i class="pi pi-wrench"></i></div>
+            <div class="quick-tile__info">
+              <h4>New Job</h4>
+              <p>Book repair</p>
+            </div>
+            <i class="pi pi-chevron-right quick-tile__arrow"></i>
+          </div>
+
+          <div class="quick-tile" (click)="router.navigate(['/web/sales'])">
+            <div class="quick-tile__icon icon-pos"><i class="pi pi-shopping-cart"></i></div>
+            <div class="quick-tile__info">
+              <h4>Sales Register</h4>
+              <p>Billing & POS</p>
+            </div>
+            <i class="pi pi-chevron-right quick-tile__arrow"></i>
+          </div>
+
+          <div class="quick-tile" (click)="router.navigate(['/web/inventory'])">
+            <div class="quick-tile__icon icon-inv"><i class="pi pi-box"></i></div>
+            <div class="quick-tile__info">
+              <h4>Inventory</h4>
+              <p>Stock & parts</p>
+            </div>
+            <i class="pi pi-chevron-right quick-tile__arrow"></i>
+          </div>
+
+          <div class="quick-tile" (click)="router.navigate(['/web/customers'])">
+            <div class="quick-tile__icon icon-cust"><i class="pi pi-users"></i></div>
+            <div class="quick-tile__info">
+              <h4>Customers</h4>
+              <p>Directory & search</p>
+            </div>
+            <i class="pi pi-chevron-right quick-tile__arrow"></i>
+          </div>
+        </div>
+      </div>
 
     </div>
 
   </div>
+
 </div>

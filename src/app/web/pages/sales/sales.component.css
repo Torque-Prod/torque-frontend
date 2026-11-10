@@ -170,16 +170,21 @@
   font-size: 0.75rem;
 }
 
-/* Category Pills */
+/* Category Pills (Matching reference screenshot) */
+.pos-category-pills,
 .category-pills {
   display: flex;
+  align-items: center;
   gap: 0.35rem;
   overflow-x: auto;
-  padding-bottom: 2px;
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.45rem;
+  scrollbar-width: thin;
 }
 
 .cat-pill {
-  padding: 0.25rem 0.6rem;
+  height: 26px;
+  padding: 0 0.65rem;
   border-radius: 9999px;
   border: 1px solid #e2e8f0;
   background: #f8fafc;
@@ -188,18 +193,29 @@
   color: #64748b;
   white-space: nowrap;
   cursor: pointer;
-  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.cat-pill i {
+  font-size: 0.6875rem;
 }
 
 .cat-pill:hover {
   background: #f1f5f9;
   color: #0f172a;
+  border-color: #cbd5e1;
 }
 
 .cat-pill.is-active {
   background: #2563eb;
   border-color: #2563eb;
   color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
 }
 
 /* Parts Grid */
@@ -211,61 +227,74 @@
 
 .parts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
-  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+  gap: 0.6rem;
 }
 
 .part-card {
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 0.7rem 0.8rem;
+  border-radius: 9px;
+  padding: 0.65rem 0.75rem;
   background: #ffffff;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.4rem;
+  box-sizing: border-box;
 }
 
 .part-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
   border-color: #93c5fd;
 }
 
 .part-card.out-of-stock {
-  opacity: 0.6;
+  opacity: 0.65;
   cursor: not-allowed;
+  background: #fafafa;
 }
 
-.part-card__img {
+/* Top Row: Thumbnail + Stock Badge */
+.part-card__top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  height: auto;
-  background: transparent;
-  position: static;
+  gap: 0.4rem;
 }
 
-.part-card__img img,
-.part-card__img-fallback {
-  width: 34px;
-  height: 34px;
-  border-radius: 7px;
+.part-card__icon-box {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: #f8fafc;
   border: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f8fafc;
-  font-size: 1rem;
-  color: #94a3b8;
-  object-fit: cover;
+  overflow: hidden;
   flex-shrink: 0;
 }
 
+.part-card__icon-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.part-card__icon-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 0.95rem;
+  color: #64748b;
+  background: #f1f5f9;
+}
+
 .part-stock-badge {
-  position: static;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -279,10 +308,21 @@
   white-space: nowrap;
 }
 
+.stock-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
 .part-stock-badge.badge-low {
   background: #fffbeb;
   color: #92400e;
   border-color: #fde68a;
+}
+
+.part-stock-badge.badge-low .stock-dot {
+  background: #f59e0b;
 }
 
 .part-stock-badge.badge-out {
@@ -291,26 +331,16 @@
   border-color: #fecaca;
 }
 
-.part-card__info {
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  gap: 0.35rem;
+.part-stock-badge.badge-out .stock-dot {
+  background: #ef4444;
 }
 
-.part-category-tag {
-  font-size: 0.625rem;
-  font-weight: 700;
-  padding: 0.12rem 0.45rem;
-  background: #eef2ff;
-  color: #4338ca;
-  border: 1px solid #c7d2fe;
-  border-radius: 5px;
-  display: inline-flex;
-  align-self: flex-start;
-  text-transform: none;
-  letter-spacing: 0.02em;
+/* Body: Title & Meta Badges */
+.part-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
 }
 
 .part-card__name {
@@ -318,20 +348,69 @@
   font-weight: 700;
   color: #0f172a;
   margin: 0;
-  line-height: 1.3;
+  line-height: 1.25;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 2.1rem;
+  min-height: 2rem;
 }
 
+.part-card__tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.part-meta-tag {
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  white-space: nowrap;
+}
+
+.part-meta-tag i {
+  font-size: 0.58rem;
+}
+
+.part-meta-tag.tag-shelf {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.part-meta-tag.tag-sku {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+.part-card__category {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.part-card__category i {
+  font-size: 0.6rem;
+  color: #94a3b8;
+}
+
+/* Bottom: Add Pill Button & Bold Price */
 .part-card__bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: auto;
-  padding-top: 0.45rem;
+  padding-top: 0.4rem;
   border-top: 1px solid #f1f5f9;
 }
 
@@ -342,27 +421,33 @@
   letter-spacing: -0.01em;
 }
 
-.add-cart-btn {
-  width: 26px;
-  height: 26px;
+.add-cart-pill-btn {
+  height: 24px;
+  padding: 0 0.55rem;
   border-radius: 6px;
   background: #eff6ff;
   color: #2563eb;
   border: 1px solid #bfdbfe;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.25rem;
   cursor: pointer;
-  font-size: 0.72rem;
-  transition: all 0.15s;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  transition: all 0.15s ease;
 }
 
-.add-cart-btn:hover:not(:disabled) {
+.add-cart-pill-btn i {
+  font-size: 0.65rem;
+}
+
+.add-cart-pill-btn:hover:not(:disabled) {
   background: #2563eb;
   color: #ffffff;
+  border-color: #2563eb;
 }
 
-.add-cart-btn:disabled {
+.add-cart-pill-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }

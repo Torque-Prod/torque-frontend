@@ -151,7 +151,25 @@
                                     optionLabel="displayName"
                                     optionValue="statusKey"
                                     (onChange)="onFilterChange()"
-                                    placeholder="All">
+                                    [showClear]="true"
+                                    placeholder="All"
+                                    appendTo="body"
+                                    styleClass="status-filter-dropdown"
+                                    panelStyleClass="status-filter-dropdown-panel">
+
+                                <ng-template let-selected pTemplate="selectedItem">
+                                    <div class="status-dd-item" *ngIf="selected">
+                                        <span class="status-dd-dot" [style.background]="selected.color"></span>
+                                        <span class="status-dd-text">{{ selected.displayName || selected }}</span>
+                                    </div>
+                                </ng-template>
+
+                                <ng-template let-s pTemplate="item">
+                                    <div class="status-dd-item">
+                                        <span class="status-dd-dot" [style.background]="s.color"></span>
+                                        <span class="status-dd-text">{{ s.displayName }}</span>
+                                    </div>
+                                </ng-template>
                             </p-dropdown>
                         </div>
 
