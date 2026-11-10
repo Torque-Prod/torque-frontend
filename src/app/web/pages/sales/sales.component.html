@@ -5,9 +5,13 @@
   <!-- Page Header & Tabs -->
   <div class="sales-header">
     <div class="sales-header__left">
-      <h1 class="sales-header__title">
-        <i class="pi pi-shopping-cart"></i> POS & Sales Register
-      </h1>
+      <div class="sales-header__title-row">
+        <h1 class="sales-header__title">
+          <i class="pi pi-shopping-cart"></i> POS & Sales Register
+        </h1>
+        <span class="header-count-badge" *ngIf="activeTab === 'pos'">{{ catalogTotalRecords }} items</span>
+        <span class="header-count-badge" *ngIf="activeTab === 'history'">{{ historyTotalRecords }} invoices</span>
+      </div>
       <p class="sales-header__subtitle">Sell items, manage tables & track sales</p>
     </div>
 

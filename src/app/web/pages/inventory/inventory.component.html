@@ -4,15 +4,18 @@
   <!-- Header -->
   <div class="rj-header">
     <div class="rj-header__left">
-      <h1 class="rj-header__title"><i class="pi pi-box"></i> Spare Parts Inventory</h1>
-      <p class="rj-header__subtitle">Manage stock levels and pricing for repair parts</p>
+      <div class="title-with-badge">
+        <h1 class="rj-header__title"><i class="pi pi-box"></i> Spare Parts Inventory</h1>
+        <span class="header-count-badge">{{ totalPartsCount }} items</span>
+      </div>
+      <p class="rj-header__subtitle">Manage stock levels, shelf locations, and pricing for spare parts</p>
     </div>
     <div class="rj-header__right">
-      <button class="btn-csv" (click)="exportToExcel()" [disabled]="exporting">
+      <button class="btn-secondary" (click)="exportToExcel()" [disabled]="exporting">
         <i class="pi" [ngClass]="exporting ? 'pi-spin pi-spinner' : 'pi-file-excel'"></i> 
         {{ exporting ? 'Exporting...' : 'Export Excel' }}
       </button>
-      <button class="btn-csv" (click)="openCsvDialog()">
+      <button class="btn-secondary" (click)="openCsvDialog()">
         <i class="pi pi-upload"></i> Import CSV
       </button>
       <button class="btn-primary" (click)="openCreateDialog()">
@@ -23,41 +26,151 @@
 
   <!-- Stats Row -->
   <div class="inv-stats">
-    <div class="stat-card" (click)="filters.stockStatus = null; onFilterChange()">
+    <div class="stat-card" [class.stat-card--active]="filters.stockStatus === null" (click)="filters.stockStatus = null; onFilterChange()">
       <div class="stat-card__dot" style="background:#2563eb"></div>
       <div class="stat-card__body">
         <span class="stat-card__label">Total Parts</span>
         <span class="stat-card__value">{{ totalPartsCount }}</span>
-        <span class="stat-card__sub">In catalog</span>
+        <span class="stat-card__sub">All catalog items</span>
       </div>
     </div>
-    <div class="stat-card" (click)="filters.stockStatus = 'available'; onFilterChange()">
-      <div class="stat-card__dot" style="background:#22c55e"></div>
+    <div class="stat-card" [class.stat-card--active]="filters.stockStatus === 'available'" (click)="filters.stockStatus = 'available'; onFilterChange()">
+      <div class="stat-card__dot" style="background:#10b981"></div>
       <div class="stat-card__body">
         <span class="stat-card__label">In Stock</span>
-        <span class="stat-card__value">{{ inStockCount }}</span>
-        <span class="stat-card__sub">Available parts</span>
+        <span class="stat-card__value text-success">{{ inStockCount }}</span>
+        <span class="stat-card__sub">Quantity &gt; 5 units</span>
       </div>
     </div>
-    <div class="stat-card" (click)="filters.stockStatus = 'low'; onFilterChange()">
-      <div class="stat-card__dot" style="background:#ef4444"></div>
+    <div class="stat-card" [class.stat-card--active]="filters.stockStatus === 'low'" (click)="filters.stockStatus = 'low'; onFilterChange()">
+      <div class="stat-card__dot" style="background:#f59e0b"></div>
       <div class="stat-card__body">
         <span class="stat-card__label">Low Stock</span>
-        <span class="stat-card__value">{{ lowStockCount }}</span>
-        <span class="stat-card__sub">Quantity ≤ 5</span>
+        <span class="stat-card__value text-warning">{{ lowStockCount }}</span>
+        <span class="stat-card__sub">Quantity &le; 5 (Reorder needed)</span>
       </div>
     </div>
   </div>
 
-  <!-- Table Card -->
+  <!-- Main Card Container -->
   <div class="rj-table-card">
-    <!-- Toolbar -->
+    <!-- Toolbar with Search & View Mode Switcher -->
     <div class="rj-toolbar">
+      <div class="rj-toolbar__search">
+        <i class="pi pi-search"></i>
+        <input type="text" [(ngModel)]="searchKeyword" (ngModelChange)="onSearch()"
+               placeholder="Search by name, category, or location..." />
+      </div>
 
+      <div class="rj-toolbar__actions">
+        <!-- View Toggle (Cards vs Table) -->
+        <div class="view-toggle">
+          <button type="button" class="view-toggle__btn" [class.is-active]="viewMode === 'cards'" (click)="viewMode = 'cards'" title="Cards View">
+            <i class="pi pi-th-large"></i>
+            <span>Cards</span>
+          </button>
+          <button type="button" class="view-toggle__btn" [class.is-active]="viewMode === 'table'" (click)="viewMode = 'table'" title="Table View">
+            <i class="pi pi-bars"></i>
+            <span>Table</span>
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- Table -->
-    <div class="rj-table-wrap">
+    <!-- Category Filter Pills (Matching screenshot category row) -->
+    <div class="category-pills-bar" *ngIf="categories.length > 0">
+      <button type="button" class="category-pill-btn" [class.is-active]="!filters.category" (click)="selectCategory(null)">
+        <i class="pi pi-objects-column"></i>
+        <span>All</span>
+        <span class="cat-count">{{ totalPartsCount }}</span>
+      </button>
+      <button type="button" *ngFor="let cat of categories" class="category-pill-btn"
+              [class.is-active]="filters.category === cat" (click)="selectCategory(cat)">
+        <i class="pi pi-tag"></i>
+        <span>{{ cat }}</span>
+      </button>
+    </div>
+
+    <!-- CARDS VIEW (Matching the Screenshot layout in light theme) -->
+    <div class="cards-view-wrap" *ngIf="viewMode === 'cards'">
+      <div *ngIf="loading" class="empty-state">
+        <i class="pi pi-spin pi-spinner"></i>
+        <p>Loading inventory...</p>
+      </div>
+
+      <div *ngIf="!loading && parts.length === 0" class="empty-state">
+        <i class="pi pi-inbox"></i>
+        <p>No spare parts found</p>
+      </div>
+
+      <div class="cards-grid" *ngIf="!loading && parts.length > 0">
+        <div *ngFor="let part of parts" class="product-card" [class.product-card--low]="part.stockQuantity <= 5">
+          <!-- Card Top: Thumbnail + Stock Status Badge -->
+          <div class="card-header-row">
+            <div class="product-thumb">
+              <img *ngIf="part.hasImage" [src]="getPartImageUrl(part.id!)" alt="{{ part.name }}" />
+              <div *ngIf="!part.hasImage" class="product-thumb-placeholder">
+                <i class="pi pi-box"></i>
+              </div>
+            </div>
+            <div class="stock-badge" [class.stock-badge--low]="part.stockQuantity <= 5">
+              <span class="stock-dot"></span>
+              {{ part.stockQuantity > 5 ? 'In Stock' : 'Low Stock' }}
+            </div>
+          </div>
+
+          <!-- Card Body: Title & Metadata Badges -->
+          <div class="card-body-content">
+            <h3 class="card-title" title="{{ part.name }}">{{ part.name }}</h3>
+
+            <div class="card-chips-row">
+              <!-- Location / Shelf Badge (Amber) -->
+              <span class="chip-shelf" *ngIf="part.containerLocation">
+                <i class="pi pi-map-marker"></i> {{ part.containerLocation }}
+              </span>
+              <span class="chip-shelf chip-shelf--empty" *ngIf="!part.containerLocation">
+                <i class="pi pi-map-marker"></i> Unassigned
+              </span>
+
+              <!-- Category Badge (Indigo) -->
+              <span class="chip-category" *ngIf="part.category">
+                <i class="pi pi-tag"></i> {{ part.category }}
+              </span>
+            </div>
+
+            <!-- Stock Count Info -->
+            <div class="card-stock-row">
+              <span class="stock-count-chip" [class.stock-count-chip--low]="part.stockQuantity <= 5">
+                <i class="pi pi-database"></i> {{ part.stockQuantity }} units available
+              </span>
+            </div>
+          </div>
+
+          <!-- Card Footer: Quick Actions + Luminous Emerald Price -->
+          <div class="card-footer-row">
+            <div class="card-actions">
+              <button class="card-btn card-btn--pos" pTooltip="Sell in POS" (click)="router.navigate(['/web/sales'])">
+                <i class="pi pi-shopping-cart"></i>
+              </button>
+              <button class="card-btn card-btn--edit" pTooltip="Edit" (click)="openEditDialog(part)">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="card-btn card-btn--delete" pTooltip="Delete" (click)="deletePart(part)">
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+
+            <div class="card-price-block">
+              <span class="price-val">Rs. {{ part.price | number:'1.2-2' }}</span>
+              <span class="price-unit">/unit</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLE VIEW (Upgraded with matching micro-badges) -->
+    <div class="rj-table-wrap" *ngIf="viewMode === 'table'">
       <table class="rj-table">
         <thead>
           <tr>
@@ -67,18 +180,7 @@
                 <label class="filter-label">PART NAME</label>
                 <input type="text" [(ngModel)]="filters.name"
                        (ngModelChange)="onFilterChange()"
-                       placeholder="Part name"
-                       class="filter-input" />
-              </div>
-            </th>
-            <th>UNIT PRICE (RS.)</th>
-            <th class="th-center">IN STOCK</th>
-            <th>
-              <div class="filter-cell">
-                <label class="filter-label">CATEGORY</label>
-                <input type="text" [(ngModel)]="filters.category"
-                       (ngModelChange)="onFilterChange()"
-                       placeholder="Category"
+                       placeholder="Filter name..."
                        class="filter-input" />
               </div>
             </th>
@@ -87,14 +189,24 @@
                 <label class="filter-label">LOCATION</label>
                 <input type="text" [(ngModel)]="filters.containerLocation"
                        (ngModelChange)="onFilterChange()"
-                       placeholder="Container location"
+                       placeholder="Filter location..."
                        class="filter-input" />
               </div>
             </th>
+            <th>
+              <div class="filter-cell">
+                <label class="filter-label">CATEGORY</label>
+                <input type="text" [(ngModel)]="filters.category"
+                       (ngModelChange)="onFilterChange()"
+                       placeholder="Filter category..."
+                       class="filter-input" />
+              </div>
+            </th>
+            <th class="th-center">IN STOCK</th>
             <th class="th-center">
               <div class="filter-cell" style="align-items:center">
                 <label class="filter-label">STATUS</label>
-                <div class="stock-filter-dropdown" >
+                <div class="stock-filter-dropdown">
                   <button class="stock-filter-trigger" type="button" (click)="toggleStockStatusDropdown($event)">
                     <span>{{ selectedStockStatusLabel }}</span>
                     <i class="pi pi-chevron-down" [class.is-open]="stockStatusDropdownOpen"></i>
@@ -121,12 +233,13 @@
                 </div>
               </div>
             </th>
+            <th class="th-right">UNIT PRICE</th>
             <th class="th-center" style="width:120px">ACTIONS</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngIf="loading">
-            <td colspan="8" class="empty-row"><i class="pi pi-spin pi-spinner"></i> Loading...</td>
+            <td colspan="8" class="empty-row"><i class="pi pi-spin pi-spinner"></i> Loading inventory...</td>
           </tr>
           <tr *ngIf="!loading && parts.length === 0">
             <td colspan="8" class="empty-row"><i class="pi pi-inbox"></i> No parts found</td>
@@ -136,38 +249,45 @@
               <div class="part-thumbnail">
                 <img *ngIf="part.hasImage" [src]="getPartImageUrl(part.id!)" alt="Part Image" />
                 <div *ngIf="!part.hasImage" class="part-thumbnail-placeholder">
-                  <i class="pi pi-image"></i>
+                  <i class="pi pi-box"></i>
                 </div>
               </div>
             </td>
-            <td><strong class="customer-name">{{ part.name }}</strong></td>
-            <td>Rs. {{ part.price | number:'1.2-2' }}</td>
-            <td class="th-center">
-              <span class="stock-value" [class.stock-critical]="part.stockQuantity <= 5">{{ part.stockQuantity }}</span>
+            <td>
+              <div class="table-part-name">{{ part.name }}</div>
             </td>
             <td>
-              <span class="category-pill" *ngIf="part.category">{{ part.category }}</span>
-              <span class="text-muted" *ngIf="!part.category">—</span>
-            </td>
-            <td>
-              <span *ngIf="part.containerLocation">{{ part.containerLocation }}</span>
+              <span class="chip-shelf" *ngIf="part.containerLocation">
+                <i class="pi pi-map-marker"></i> {{ part.containerLocation }}
+              </span>
               <span class="text-muted" *ngIf="!part.containerLocation">—</span>
             </td>
-            <td class="th-center">
-              <span class="status-pill"
-                [style.background]="part.stockQuantity > 5 ? '#f0fdf4' : '#fef2f2'"
-                [style.color]="part.stockQuantity > 5 ? '#16a34a' : '#dc2626'"
-                [style.border-color]="part.stockQuantity > 5 ? '#bbf7d0' : '#fecaca'">
-                <i [class]="part.stockQuantity > 5 ? 'pi pi-check-circle' : 'pi pi-exclamation-circle'"></i>
-                {{ part.stockQuantity > 5 ? 'Available' : 'Low Stock' }}
+            <td>
+              <span class="chip-category" *ngIf="part.category">
+                <i class="pi pi-tag"></i> {{ part.category }}
               </span>
+              <span class="text-muted" *ngIf="!part.category">—</span>
+            </td>
+            <td class="th-center">
+              <span class="stock-count-chip" [class.stock-count-chip--low]="part.stockQuantity <= 5">
+                {{ part.stockQuantity }} units
+              </span>
+            </td>
+            <td class="th-center">
+              <div class="stock-badge" [class.stock-badge--low]="part.stockQuantity <= 5">
+                <span class="stock-dot"></span>
+                {{ part.stockQuantity > 5 ? 'In Stock' : 'Low Stock' }}
+              </div>
+            </td>
+            <td class="th-right">
+              <span class="table-price">Rs. {{ part.price | number:'1.2-2' }}</span>
             </td>
             <td>
               <div class="action-buttons">
-                <button class="action-btn action-btn--edit" style="background:#eff6ff;color:#2563eb;border-color:#bfdbfe" pTooltip="Sell Part (POS)" (click)="router.navigate(['/web/sales'])">
+                <button class="action-btn action-btn--pos" pTooltip="Sell in POS" (click)="router.navigate(['/web/sales'])">
                   <i class="pi pi-shopping-cart"></i>
                 </button>
-                <button class="action-btn action-btn--view" pTooltip="Edit" (click)="openEditDialog(part)">
+                <button class="action-btn action-btn--edit" pTooltip="Edit" (click)="openEditDialog(part)">
                   <i class="pi pi-pencil"></i>
                 </button>
                 <button class="action-btn action-btn--delete" pTooltip="Delete" (click)="deletePart(part)">

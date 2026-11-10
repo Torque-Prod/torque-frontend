@@ -51,6 +51,10 @@ export class InventoryComponent implements OnInit {
   };
   stockStatusDropdownOpen = false;
 
+  // ── View Mode & Categories ────────────────────────────────
+  viewMode: 'cards' | 'table' = 'cards';
+  categories: string[] = [];
+
   // ── Stats (separate lightweight counters) ─────────────────
   totalPartsCount  = 0;
   inStockCount     = 0;
@@ -146,7 +150,20 @@ export class InventoryComponent implements OnInit {
       this.totalPartsCount = all.length;
       this.inStockCount    = all.filter(p => p.stockQuantity > 5).length;
       this.lowStockCount   = all.filter(p => p.stockQuantity <= 5).length;
+
+      const set = new Set<string>();
+      all.forEach(p => {
+        if (p.category && p.category.trim()) {
+          set.add(p.category.trim());
+        }
+      });
+      this.categories = Array.from(set).sort();
     });
+  }
+
+  selectCategory(category: string | null): void {
+    this.filters.category = category || '';
+    this.onFilterChange();
   }
 
   // ── Filter / pagination triggers ───────────────────────────
