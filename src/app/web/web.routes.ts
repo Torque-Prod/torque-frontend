@@ -49,6 +49,12 @@ export const WEB_ROUTES: Routes = [
         loadComponent: () => import('./pages/roles/roles.component').then(m => m.RolesComponent)
       },
       {
+        path: 'users',
+        canActivate: [privilegeGuard],
+        data: { privilege: 'MANAGE_ROLES' },
+        loadComponent: () => import('./pages/users/users.component').then(m => m.UsersComponent)
+      },
+      {
         path: 'restaurant-menu',
         loadComponent: () => import('./pages/restaurant-menu/restaurant-menu.component').then(m => m.RestaurantMenuComponent)
       },

@@ -1,0 +1,137 @@
+<div class="um-page">
+  <p-toast></p-toast>
+
+  <!-- Header -->
+  <div class="um-header">
+    <div class="um-header__left">
+      <div class="um-header__title-row">
+        <h1 class="um-header__title"><i class="pi pi-user"></i> User Accounts</h1>
+        <span class="header-count-badge">{{ users.length }} users</span>
+      </div>
+      <p class="um-header__subtitle">Manage system login accounts and role assignments</p>
+    </div>
+    <div class="um-header__right">
+      <div class="um-search-wrap">
+        <i class="pi pi-search um-search-icon"></i>
+        <input class="um-search-input" [(ngModel)]="filterText" (ngModelChange)="applyFilter()" placeholder="Search users..." />
+      </div>
+      <button class="btn-primary" (click)="openCreate()">
+        <i class="pi pi-plus"></i> New User
+      </button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="um-table-card">
+    <div class="um-table-wrap">
+      <table class="um-table">
+        <thead>
+          <tr>
+            <th>USER</th>
+            <th>USERNAME</th>
+            <th>ROLE</th>
+            <th>BRANCH / LOCATION</th>
+            <th class="th-center" style="width:130px">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="loading">
+            <td colspan="5" class="empty-row"><i class="pi pi-spin pi-spinner"></i> Loading...</td>
+          </tr>
+          <tr *ngIf="!loading && filteredUsers.length === 0">
+            <td colspan="5" class="empty-row"><i class="pi pi-users"></i> No users found</td>
+          </tr>
+          <tr *ngFor="let user of filteredUsers" class="um-row">
+            <td>
+              <div class="user-avatar-cell">
+                <div class="user-avatar">{{ getInitials(user.username) }}</div>
+              </div>
+            </td>
+            <td><strong>{{ user.username }}</strong></td>
+            <td>
+              <span [class]="getRoleBadgeClass(user.roleName)">{{ user.roleName || '—' }}</span>
+            </td>
+            <td>{{ user.branchLocation || '—' }}</td>
+            <td>
+              <div class="action-buttons">
+                <button class="action-btn action-btn--edit" title="Edit User" (click)="openEdit(user)">
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button class="action-btn action-btn--reset" title="Reset Password" (click)="openResetPassword(user)">
+                  <i class="pi pi-key"></i>
+                </button>
+                <button class="action-btn action-btn--delete" title="Delete User" (click)="deleteUser(user)">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Create / Edit User Dialog -->
+<p-dialog [(visible)]="dialogVisible" [header]="editMode ? 'Edit User' : 'New User Account'"
+          [modal]="true" [style]="{width: '480px'}" styleClass="um-modal">
+  <div class="modal-form">
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" class="form-input" [(ngModel)]="form.username" [disabled]="editMode" placeholder="e.g. john.doe" />
+    </div>
+    <div class="form-group" *ngIf="!editMode">
+      <label>Password</label>
+      <input type="password" class="form-input" [(ngModel)]="form.password" placeholder="Minimum 6 characters" />
+    </div>
+    <div class="form-group">
+      <label>Role</label>
+      <p-dropdown [options]="roleOptions" [(ngModel)]="form.roleId" optionLabel="label" optionValue="value"
+                  placeholder="Select a role" [style]="{'width':'100%'}" appendTo="body" styleClass="um-dropdown">
+      </p-dropdown>
+    </div>
+    <div class="form-group">
+      <label>Branch / Location</label>
+      <input type="text" class="form-input" [(ngModel)]="form.branchLocation" placeholder="e.g. Main Branch" />
+    </div>
+    <div class="form-error" *ngIf="formError">
+      <i class="pi pi-exclamation-circle"></i> {{ formError }}
+    </div>
+  </div>
+  <ng-template pTemplate="footer">
+    <div class="dialog-footer-btns">
+      <button class="cj-btn-cancel" (click)="dialogVisible = false">Cancel</button>
+      <button class="cj-btn-create" (click)="saveUser()" [disabled]="saving">
+        <i class="pi" [ngClass]="saving ? 'pi-spin pi-spinner' : 'pi-check'"></i>
+        {{ saving ? 'Saving...' : (editMode ? 'Update User' : 'Create User') }}
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- Reset Password Dialog -->
+<p-dialog [(visible)]="resetDialogVisible" header="Reset Password"
+          [modal]="true" [style]="{width: '400px'}" styleClass="um-modal">
+  <div class="modal-form">
+    <div class="form-group">
+      <label>New Password</label>
+      <input type="password" class="form-input" [(ngModel)]="newPassword" placeholder="Minimum 6 characters" />
+    </div>
+    <div class="form-group">
+      <label>Confirm Password</label>
+      <input type="password" class="form-input" [(ngModel)]="confirmPassword" placeholder="Repeat password" />
+    </div>
+    <div class="form-error" *ngIf="resetError">
+      <i class="pi pi-exclamation-circle"></i> {{ resetError }}
+    </div>
+  </div>
+  <ng-template pTemplate="footer">
+    <div class="dialog-footer-btns">
+      <button class="cj-btn-cancel" (click)="resetDialogVisible = false">Cancel</button>
+      <button class="cj-btn-create" (click)="saveResetPassword()" [disabled]="resetSaving">
+        <i class="pi" [ngClass]="resetSaving ? 'pi-spin pi-spinner' : 'pi-key'"></i>
+        {{ resetSaving ? 'Saving...' : 'Reset Password' }}
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
