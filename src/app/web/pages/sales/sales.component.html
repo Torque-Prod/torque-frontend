@@ -67,43 +67,6 @@
         </div>
       </div>
 
-      <!-- Category Filter Pills (matching reference screenshot) -->
-      <div class="pos-category-pills" *ngIf="businessType === 'REPAIR_CENTER' && categories.length > 0">
-        <button 
-          type="button"
-          class="cat-pill" 
-          [class.is-active]="!selectedCategory" 
-          (click)="filterByCategory('')">
-          <i class="pi pi-th-large"></i> All
-        </button>
-        <button 
-          type="button"
-          *ngFor="let cat of categories" 
-          class="cat-pill" 
-          [class.is-active]="selectedCategory === cat" 
-          (click)="filterByCategory(cat)">
-          <i class="pi pi-tag"></i> {{ cat }}
-        </button>
-      </div>
-
-      <div class="pos-category-pills" *ngIf="businessType === 'RESTAURANT' && restaurantCategories.length > 0">
-        <button 
-          type="button"
-          class="cat-pill" 
-          [class.is-active]="!selectedRestaurantCategory" 
-          (click)="filterRestaurantCategory('')">
-          <i class="pi pi-th-large"></i> All
-        </button>
-        <button 
-          type="button"
-          *ngFor="let cat of restaurantCategories" 
-          class="cat-pill" 
-          [class.is-active]="selectedRestaurantCategory === cat" 
-          (click)="filterRestaurantCategory(cat)">
-          <i class="pi pi-tag"></i> {{ cat }}
-        </button>
-      </div>
-
       <!-- ── RESTAURANT: Food Menu Grid ── -->
       <div class="parts-grid-scroll" *ngIf="businessType === 'RESTAURANT'">
         <div *ngIf="loadingCatalog" class="catalog-empty">
